@@ -1,216 +1,46 @@
 import json
 
-import numpy as np
-import matplotlib.pyplot as plt
-import torch
-from torchvision.transforms import transforms
-
-from utils import CustomImageDataset
+from utility.preprocessing import specified_categories_filter, outfit_filter, train_validation_test_split, \
+    eliminate_multiple_outfit_instances
 
 # Create a json file with all the items that belongs to the specified wanted categories
 
-# with open('.\json\polyvore_item_metadata.json', 'r') as polyvore_item_metadata:
-#     data = json.load(polyvore_item_metadata)
-#
-# filtered_data = {key: value for key, value in data.items() if
-#                  value.get("semantic_category") == "bottoms" or value.get("semantic_category") == "tops" or value.get(
-#                      "semantic_category") == "shoes" or value.get("semantic_category") == "accessories"}
-# filtered_json = json.dumps(filtered_data, indent=4)
-#
-# with open('.\json\\filtered\\filtered_polyvore_item_metadata.json', 'w') as filtered_polyvore_item_metadata_file:
-#     filtered_polyvore_item_metadata_file.write(filtered_json)
+with open('.\json\polyvore_item_metadata.json', 'r') as polyvore_item_metadata:
+    items_json = json.load(polyvore_item_metadata)
+
+filtered_items_json = specified_categories_filter(items_json)
+
+with open('.\json\\filtered\\filtered_polyvore_item_metadata.json', 'w') as filtered_polyvore_item_metadata_file:
+    filtered_polyvore_item_metadata_file.write(filtered_items_json)
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+# Filter the outfit itemsets in the overall data to eliminate the items that don't belong to the wanted categories
+
+with open('.\json\\train.json', 'r') as d1:
+    d1 = json.load(d1)
+with open('.\json\\test.json', 'r') as d2:
+    d2 = json.load(d2)
+with open('.\json\\valid.json', 'r') as d3:
+    d3 = json.load(d3)
+
+dataset_json = eliminate_multiple_outfit_instances(d1 + d2 + d3)
 
 with open('.\json\\filtered\\filtered_polyvore_item_metadata.json', 'r') as filtered_polyvore_item_metadata:
-    data = json.load(filtered_polyvore_item_metadata)
+    filtered_items_json = json.load(filtered_polyvore_item_metadata)
 
-# ----------------------------------------------------------------------------------------------------------------------
+with open('.\json\polyvore_outfit_titles.json', 'r') as polyvore_outfit_titles:
+    outfit_titles = json.load(polyvore_outfit_titles)
 
-# Filter the outfit itemsets in the training data to eliminate the items that don't belong to the wanted categories
+filtered_dataset = outfit_filter(dataset_json, filtered_items_json, outfit_titles)
 
-# item_ids = list(data.keys())
+train_set, validation_set, test_set = train_validation_test_split(filtered_dataset, test_ratio=0.2)
 
-# with open('.\json\train.json', 'r') as train:
-#     train_data = json.load(train)
-# with open('.\json\polyvore_outfit_titles.json', 'r') as polyvore_outfit_titles:
-#     outfit_titles = json.load(polyvore_outfit_titles)
+with open('.\json\\filtered\\train_set.json', 'w') as train_set_file:
+    json.dump(train_set, train_set_file, indent=4)
 
-# filtered_outfits = []
-# categories = []
-# for outfit in train_data:
-#     filtered_items = [item for item in outfit['items'] if item['item_id'] in item_ids]
-#     categories = [data[item["item_id"]]["semantic_category"] for item in filtered_items]
-#
-#     # consider the outfit only if it contains items of all the four wanted categories
-#     if len(set(categories)) == 4:
-#         outfit['items'] = filtered_items
-#         for item in outfit['items']:
-#             del item['index']
-#         outfit['items'] = [item | {"category": data[item["item_id"]]["semantic_category"]} for item in outfit['items']]
-#         outfit['outfit_description'] = outfit_titles[outfit["set_id"]]["url_name"]
-#         del outfit["set_id"]
-#
-#         # remove multiple items for the same categories in the outfit itemset
-#         bottom = 0
-#         shoes = 0
-#         top = 0
-#         accessory = 0
-#         to_remove = []
-#         for i, item in enumerate(outfit['items']):
-#             category = data[item["item_id"]]["semantic_category"]
-#             if category == 'bottoms':
-#                 bottom += 1
-#                 if bottom > 1:
-#                     to_remove.append(i)
-#             elif category == 'shoes':
-#                 shoes += 1
-#                 if shoes > 1:
-#                     to_remove.append(i)
-#             elif category == 'tops':
-#                 top += 1
-#                 if top > 1:
-#                     to_remove.append(i)
-#             elif category == 'accessories':
-#                 accessory += 1
-#                 if accessory > 1:
-#                     to_remove.append(i)
-#         for i in sorted(to_remove, reverse=True):
-#             del outfit['items'][i]
-#
-#         filtered_outfits.append(outfit)
-#
-# with open('.\json\\filtered\\filtered_train.json', 'w') as filtered_train_file:
-#     json.dump(filtered_outfits, filtered_train_file, indent=4)
+with open('.\json\\filtered\\validation_set.json', 'w') as validation_set_file:
+    json.dump(validation_set, validation_set_file, indent=4)
 
-with open('.\json\\filtered\\filtered_train.json', 'r') as filtered_train:
-    train_data = json.load(filtered_train)
-
-# ----------------------------------------------------------------------------------------------------------------------
-
-# with open('.\json\test.json', 'r') as test:
-#     test_data = json.load(test)
-#
-# filtered_outfits = []
-# categories = []
-# for outfit in test_data:
-#     filtered_items = [item for item in outfit['items'] if item['item_id'] in item_ids]
-#     categories = [data[item["item_id"]]["semantic_category"] for item in filtered_items]
-#
-#     # consider the outfit only if it contains items of all the four wanted categories
-#     if len(set(categories)) == 4:
-#         outfit['items'] = filtered_items
-#         for item in outfit['items']:
-#             del item['index']
-#         outfit['items'] = [item | {"category": data[item["item_id"]]["semantic_category"]} for item in outfit['items']]
-#         outfit['outfit_description'] = outfit_titles[outfit["set_id"]]["url_name"]
-#         del outfit["set_id"]
-#
-#         # remove multiple items for the same categories in the outfit itemset
-#         bottom = 0
-#         shoes = 0
-#         top = 0
-#         accessory = 0
-#         to_remove = []
-#         for i, item in enumerate(outfit['items']):
-#             category = data[item["item_id"]]["semantic_category"]
-#             if category == 'bottoms':
-#                 bottom += 1
-#                 if bottom > 1:
-#                     to_remove.append(i)
-#             elif category == 'shoes':
-#                 shoes += 1
-#                 if shoes > 1:
-#                     to_remove.append(i)
-#             elif category == 'tops':
-#                 top += 1
-#                 if top > 1:
-#                     to_remove.append(i)
-#             elif category == 'accessories':
-#                 accessory += 1
-#                 if accessory > 1:
-#                     to_remove.append(i)
-#         for i in sorted(to_remove, reverse=True):
-#             del outfit['items'][i]
-#
-#         filtered_outfits.append(outfit)
-#
-# with open('.\json\\filtered\\filtered_test.json', 'w') as filtered_test_file:
-#     json.dump(filtered_outfits, filtered_test_file, indent=4)
-
-with open('.\json\\filtered\\filtered_test.json', 'r') as filtered_test:
-    test_data = json.load(filtered_test)
-
-# ----------------------------------------------------------------------------------------------------------------------
-
-# with open('.\json\valid.json', 'r') as valid:
-#     valid_data = json.load(valid)
-#
-# filtered_outfits = []
-# categories = []
-# for outfit in valid_data:
-#     filtered_items = [item for item in outfit['items'] if item['item_id'] in item_ids]
-#     categories = [data[item["item_id"]]["semantic_category"] for item in filtered_items]
-#
-#     # consider the outfit only if it contains items of all the four wanted categories
-#     if len(set(categories)) == 4:
-#         outfit['items'] = filtered_items
-#         for item in outfit['items']:
-#             del item['index']
-#         outfit['items'] = [item | {"category": data[item["item_id"]]["semantic_category"]} for item in outfit['items']]
-#         outfit['outfit_description'] = outfit_titles[outfit["set_id"]]["url_name"]
-#         del outfit["set_id"]
-#
-#         # remove multiple items for the same categories in the outfit itemset
-#         bottom = 0
-#         shoes = 0
-#         top = 0
-#         accessory = 0
-#         to_remove = []
-#         for i, item in enumerate(outfit['items']):
-#             category = data[item["item_id"]]["semantic_category"]
-#             if category == 'bottoms':
-#                 bottom += 1
-#                 if bottom > 1:
-#                     to_remove.append(i)
-#             elif category == 'shoes':
-#                 shoes += 1
-#                 if shoes > 1:
-#                     to_remove.append(i)
-#             elif category == 'tops':
-#                 top += 1
-#                 if top > 1:
-#                     to_remove.append(i)
-#             elif category == 'accessories':
-#                 accessory += 1
-#                 if accessory > 1:
-#                     to_remove.append(i)
-#         for i in sorted(to_remove, reverse=True):
-#             del outfit['items'][i]
-#
-#         filtered_outfits.append(outfit)
-#
-# with open('.\json\\filtered\\filtered_valid.json', 'w') as filtered_valid_file:
-#     json.dump(filtered_outfits, filtered_valid_file, indent=4)
-
-with open('.\json\\filtered\\filtered_valid.json', 'r') as filtered_valid:
-    valid_data = json.load(filtered_valid)
-
-# ----------------------------------------------------------------------------------------------------------------------
-
-transform = transforms.Compose([transforms.Resize(100)])
-
-trainset = CustomImageDataset(img_dir='../images', data=train_data, transform=transform)
-trainloader = torch.utils.data.DataLoader(trainset, batch_size=64, shuffle=True)
-
-dataiter = iter(trainloader)
-images, labels = next(dataiter)
-
-# plot the images in the first outfit sample of the batch, along with the corresponding labels
-images = [el[0].numpy() for el in images]
-labels = [el[0] for el in labels]
-fig = plt.figure(figsize=(6, 2))
-for idx in np.arange(4):
-    ax = fig.add_subplot(1, 4, idx + 1, xticks=[], yticks=[])
-    img = images[idx]
-    plt.imshow(np.transpose(img, (1, 2, 0)))
-    ax.set_title(labels[idx])
-plt.show()
+with open('.\json\\filtered\\test_set.json', 'w') as test_set_file:
+    json.dump(test_set, test_set_file, indent=4)
