@@ -112,11 +112,10 @@ g_optimizer = torch.optim.Adam(generator.parameters(), lr=1e-4)
 #         G_loss.backward()
 #         G_optimizer.step()
 
-def generator_train_step(batch_size, discriminator, generator, g_optimizer, criterion):
+def generator_train_step(noise, batch_size, discriminator, generator, g_optimizer, criterion):
     g_optimizer.zero_grad()
-    z = Variable(torch.randn(batch_size, 100)).to(device)
     # fake_labels = Variable(torch.LongTensor(np.random.randint(0, 10, batch_size))).cuda()
-    fake_images = generator(z)
+    fake_images = generator(noise)
     validity = discriminator(fake_images)
     g_loss = criterion(validity, Variable(torch.ones(batch_size, 1)).to(device))
     g_loss.backward()
@@ -124,7 +123,7 @@ def generator_train_step(batch_size, discriminator, generator, g_optimizer, crit
     return g_loss.data.item()
 
 
-def discriminator_train_step(batch_size, discriminator, generator, d_optimizer, criterion, real_images):
+def discriminator_train_step(noise, batch_size, discriminator, generator, d_optimizer, criterion, real_images):
     d_optimizer.zero_grad()
 
     # train with real images
@@ -132,9 +131,8 @@ def discriminator_train_step(batch_size, discriminator, generator, d_optimizer, 
     real_loss = criterion(real_validity, Variable(torch.ones(batch_size, 1)).to(device))
 
     # train with fake images
-    z = Variable(torch.randn(batch_size, 100)).to(device)
     # fake_labels = Variable(torch.LongTensor(np.random.randint(0, 10, batch_size))).cuda()
-    fake_images = generator(z)
+    fake_images = generator(noise)
     fake_validity = discriminator(fake_images)
     fake_loss = criterion(fake_validity, Variable(torch.zeros(batch_size, 1)).to(device))
 
@@ -145,20 +143,20 @@ def discriminator_train_step(batch_size, discriminator, generator, d_optimizer, 
 
 
 num_epochs = 30
-n_critic = 5
-display_step = 300
+batch_size = 64
 for epoch in range(num_epochs):
     print('Starting epoch {}...'.format(epoch))
     for i, (images, labels) in enumerate(trainloader):
         real_images = Variable(images[3]).to(device)
+        batch_size = real_images.size(0)
+        z = Variable(torch.randn(batch_size, 100)).to(device)
         # labels = Variable(labels[3]).cuda()
         generator.train()
-        batch_size = real_images.size(0)
-        d_loss = discriminator_train_step(len(real_images), discriminator,
+        d_loss = discriminator_train_step(z, len(real_images), discriminator,
                                           generator, d_optimizer, criterion,
                                           real_images)
 
-        g_loss = generator_train_step(batch_size, discriminator, generator, g_optimizer, criterion)
+        g_loss = generator_train_step(z, batch_size, discriminator, generator, g_optimizer, criterion)
 
     generator.eval()
     print('g_loss: {}, d_loss: {}'.format(g_loss, d_loss))
@@ -178,5 +176,3 @@ for epoch in range(num_epochs):
         plt.imshow(np.transpose(img, (1, 2, 0)))
         ax.set_title(idx)
     plt.show()
-
-print('ciao')

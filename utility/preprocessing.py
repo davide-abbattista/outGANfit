@@ -1,5 +1,6 @@
 import json
 import random
+import os
 
 
 def specified_categories_filter(items):
@@ -86,3 +87,11 @@ def train_validation_test_split(dataset, test_ratio, shuffle=False, seed=None):
     test_idx = round(len(dataset) * (1 - test_ratio))
     val_idx = round(test_idx * (1 - val_ratio))
     return dataset[: val_idx], dataset[val_idx: test_idx], dataset[test_idx:]
+
+
+def remove_images(folder_path, images_to_keep):
+    for filename in os.listdir(folder_path):
+        if filename not in images_to_keep:
+            image_path = os.path.join(folder_path, filename)
+            os.remove(image_path)
+            print(f"Removed: {filename}")
