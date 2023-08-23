@@ -1,13 +1,26 @@
 import json
 import random
 import os
+import csv
 
 
-def specified_categories_filter(items):
+def filter_csv(input_filename):
+    allowed_category_ids = []
+    with open(input_filename, 'r', newline='') as file:
+        csv_reader = csv.reader(file)
+        for row in csv_reader:
+            category = row[2]
+            if (category == 'bottoms' and 'pants' in row[1].lower()) or (
+                    category == 'bottoms' and 'jeans' in row[1].lower()) or (
+                    category == 'tops' and 'shirt' in row[1].lower()) or (category == 'shoes') or (
+                    category == 'accessories'):
+                allowed_category_ids.append(row[0])
+    return list(set(allowed_category_ids))
+
+
+def specified_categories_filter(items, allowed_category_ids):
     filtered_data = {key: value for key, value in items.items() if
-                     value.get("semantic_category") == "bottoms" or value.get(
-                         "semantic_category") == "tops" or value.get(
-                         "semantic_category") == "shoes" or value.get("semantic_category") == "accessories"}
+                     value.get("category_id") in allowed_category_ids}
     return json.dumps(filtered_data, indent=4)
 
 
