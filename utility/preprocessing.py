@@ -76,7 +76,10 @@ def outfit_filter(dataset, filtered_items, outfit_titles):
     return filtered_outfits
 
 
-def train_validation_test_split(dataset, test_ratio, shuffle=False):
+def train_validation_test_split(dataset, test_ratio, shuffle=False, seed=None):
+    if seed:
+        shuffle = True
+        random.seed(seed)
     if shuffle:
         random.shuffle(dataset)
     val_ratio = test_ratio / (1 - test_ratio)

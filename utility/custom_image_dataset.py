@@ -1,4 +1,6 @@
 import os
+
+import torch
 from torch.utils.data import Dataset
 from torchvision.io import read_image
 
@@ -21,10 +23,11 @@ class CustomImageDataset(Dataset):
         img_path_b = os.path.join(self.img_dir, str(bottom) + '.jpg')
         img_path_s = os.path.join(self.img_dir, str(shoes) + '.jpg')
         img_path_t = os.path.join(self.img_dir, str(top) + '.jpg')
-        image_a = read_image(img_path_a)
-        image_b = read_image(img_path_b)
-        image_s = read_image(img_path_s)
-        image_t = read_image(img_path_t)
+        # add .to(torch.float) to convert the dtype from uint8 to float32 for using transforms.Normalize(...)
+        image_a = read_image(img_path_a).to(torch.float)
+        image_b = read_image(img_path_b).to(torch.float)
+        image_s = read_image(img_path_s).to(torch.float)
+        image_t = read_image(img_path_t).to(torch.float)
         labels = ['accessories', 'bottoms', 'shoes', 'tops']
         if self.transform:
             image_a = self.transform(image_a)
