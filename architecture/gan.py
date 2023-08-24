@@ -11,23 +11,31 @@ class Generator(nn.Module):
         # self.label_conditioned_generator = nn.Sequential(nn.Embedding(n_classes, embedding_dim),
         #                                                  nn.Linear(embedding_dim, 16))
 
-        self.latent = nn.Sequential(nn.Linear(self.latent_dim, 512 * 4 * 4),
-                                    nn.LeakyReLU(0.2, inplace=True))
+        # self.latent = nn.Sequential(nn.Linear(self.latent_dim, 512 * 4 * 4),
+        #                             nn.LeakyReLU(0.2, inplace=True))
+
+        self.latent = nn.Linear(self.latent_dim, 512 * 4 * 4)
 
         self.model = nn.Sequential(nn.ConvTranspose2d(512, 64 * 8, 4, 2, 1, bias=False),
                                    nn.BatchNorm2d(64 * 8, momentum=0.1, eps=0.8),
-                                   nn.LeakyReLU(0.2, inplace=True),
+                                   nn.ReLU(inplace=True),
                                    nn.ConvTranspose2d(64 * 8, 64 * 4, 4, 2, 1, bias=False),
                                    nn.BatchNorm2d(64 * 4, momentum=0.1, eps=0.8),
-                                   nn.LeakyReLU(0.2, inplace=True),
+                                   nn.ReLU(inplace=True),
                                    nn.ConvTranspose2d(64 * 4, 64 * 2, 4, 2, 1, bias=False),
                                    nn.BatchNorm2d(64 * 2, momentum=0.1, eps=0.8),
-                                   nn.LeakyReLU(0.2, inplace=True),
+                                   nn.ReLU(inplace=True),
                                    nn.ConvTranspose2d(64 * 2, 64 * 1, 4, 2, 1, bias=False),
                                    nn.BatchNorm2d(64 * 1, momentum=0.1, eps=0.8),
-                                   nn.LeakyReLU(0.2, inplace=True),
+                                   nn.ReLU(inplace=True),
                                    nn.ConvTranspose2d(64 * 1, 3, 4, 2, 1, bias=False),
                                    nn.Tanh())
+
+        def init_weights(m):
+            if isinstance(m, nn.Linear):
+                torch.nn.init.normal_(m.weight, 0, 0.02)
+
+        self.model.apply(init_weights)
 
     def forward(self, noise_vector):
         # noise_vector, contitioning_image = input
@@ -61,7 +69,7 @@ class Discriminator(nn.Module):
                                    nn.BatchNorm2d(64 * 8, momentum=0.1, eps=0.8),
                                    nn.LeakyReLU(0.2, inplace=True),
                                    nn.Flatten(),
-                                   nn.Dropout(0.4),
+                                   # nn.Dropout(0.4),
                                    nn.Linear(4608, 1),
                                    nn.Sigmoid()
                                    )

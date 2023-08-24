@@ -56,8 +56,8 @@ generator = Generator().to(device)
 discriminator = Discriminator().to(device)
 
 criterion = torch.nn.BCELoss()
-d_optimizer = torch.optim.Adam(discriminator.parameters(), lr=1e-4)
-g_optimizer = torch.optim.Adam(generator.parameters(), lr=1e-4)
+d_optimizer = torch.optim.Adam(discriminator.parameters(), lr=1e-2, betas=(0.5, 0.999))
+g_optimizer = torch.optim.Adam(generator.parameters(), lr=1e-2, betas=(0.5, 0.999))
 
 #
 # def generator_loss(label, fake_output):
@@ -112,9 +112,10 @@ g_optimizer = torch.optim.Adam(generator.parameters(), lr=1e-4)
 #         G_loss.backward()
 #         G_optimizer.step()
 
-def generator_train_step(noise, batch_size, discriminator, generator, g_optimizer, criterion):
+def generator_train_step(z, batch_size, discriminator, generator, g_optimizer, criterion):
     g_optimizer.zero_grad()
     # fake_labels = Variable(torch.LongTensor(np.random.randint(0, 10, batch_size))).cuda()
+    noise = Variable(torch.randn(batch_size, 100)).to(device)
     fake_images = generator(noise)
     validity = discriminator(fake_images)
     g_loss = criterion(validity, Variable(torch.ones(batch_size, 1)).to(device))
@@ -123,7 +124,7 @@ def generator_train_step(noise, batch_size, discriminator, generator, g_optimize
     return g_loss.data.item()
 
 
-def discriminator_train_step(noise, batch_size, discriminator, generator, d_optimizer, criterion, real_images):
+def discriminator_train_step(z, batch_size, discriminator, generator, d_optimizer, criterion, real_images):
     d_optimizer.zero_grad()
 
     # train with real images
@@ -132,6 +133,7 @@ def discriminator_train_step(noise, batch_size, discriminator, generator, d_opti
 
     # train with fake images
     # fake_labels = Variable(torch.LongTensor(np.random.randint(0, 10, batch_size))).cuda()
+    noise = Variable(torch.randn(batch_size, 100)).to(device)
     fake_images = generator(noise)
     fake_validity = discriminator(fake_images)
     fake_loss = criterion(fake_validity, Variable(torch.zeros(batch_size, 1)).to(device))
@@ -172,7 +174,7 @@ for epoch in range(num_epochs):
     fig = plt.figure(figsize=(10, 10))
     for idx in np.arange(9):
         ax = fig.add_subplot(3, 3, idx + 1, xticks=[], yticks=[])
-        img = images[idx]
+        img = (images[idx] * 127.5 + 127.5).astype(int)
         plt.imshow(np.transpose(img, (1, 2, 0)))
         ax.set_title(idx)
     plt.show()
