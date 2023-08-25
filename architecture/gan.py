@@ -69,7 +69,7 @@ class Discriminator(nn.Module):
                                    nn.BatchNorm2d(64 * 8, momentum=0.1, eps=0.8),
                                    nn.LeakyReLU(0.2, inplace=True),
                                    nn.Flatten(),
-                                   # nn.Dropout(0.4),
+                                   nn.Dropout(0.4),
                                    nn.Linear(4608, 1),
                                    nn.Sigmoid()
                                    )

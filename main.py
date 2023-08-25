@@ -56,8 +56,8 @@ generator = Generator().to(device)
 discriminator = Discriminator().to(device)
 
 criterion = torch.nn.BCELoss()
-d_optimizer = torch.optim.Adam(discriminator.parameters(), lr=1e-2, betas=(0.5, 0.999))
-g_optimizer = torch.optim.Adam(generator.parameters(), lr=1e-2, betas=(0.5, 0.999))
+d_optimizer = torch.optim.Adam(discriminator.parameters(), lr=3e-4)
+g_optimizer = torch.optim.Adam(generator.parameters(), lr=3e-4) # , betas=(0.5, 0.999)
 
 #
 # def generator_loss(label, fake_output):
@@ -144,11 +144,12 @@ def discriminator_train_step(z, batch_size, discriminator, generator, d_optimize
     return d_loss.data.item()
 
 
-num_epochs = 30
-batch_size = 64
+num_epochs = 300
+batch_size = 8
 for epoch in range(num_epochs):
     print('Starting epoch {}...'.format(epoch))
     for i, (images, labels) in enumerate(trainloader):
+        print(f'Batch {i}')
         real_images = Variable(images[3]).to(device)
         batch_size = real_images.size(0)
         z = Variable(torch.randn(batch_size, 100)).to(device)
@@ -178,3 +179,8 @@ for epoch in range(num_epochs):
         plt.imshow(np.transpose(img, (1, 2, 0)))
         ax.set_title(idx)
     plt.show()
+
+torch.save(generator.state_dict(), 'generator_model.pth')
+torch.save(discriminator.state_dict(), 'discriminator_model.pth')
+
+print("Models saved successfully!")
