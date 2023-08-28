@@ -22,13 +22,13 @@ transform = transforms.Compose([transforms.Resize(128),
                                 ])
 
 trainset = CustomImageDataset(img_dir='.\images', data=train_set, transform=transform)
-trainloader = torch.utils.data.DataLoader(trainset, batch_size=64, shuffle=True)
+trainloader = torch.utils.data.DataLoader(trainset, batch_size=128, shuffle=True)
 
 validationset = CustomImageDataset(img_dir='.\images', data=validation_set, transform=transform)
-validationloader = torch.utils.data.DataLoader(trainset, batch_size=64, shuffle=True)
+validationloader = torch.utils.data.DataLoader(trainset, batch_size=128, shuffle=True)
 
 testset = CustomImageDataset(img_dir='.\images', data=test_set, transform=transform)
-testloader = torch.utils.data.DataLoader(trainset, batch_size=64, shuffle=True)
+testloader = torch.utils.data.DataLoader(trainset, batch_size=128, shuffle=True)
 
 dataiter = iter(trainloader)
 images, labels = next(dataiter)
@@ -39,7 +39,7 @@ labels = [el[0] for el in labels]
 fig = plt.figure(figsize=(6, 2))
 for idx in np.arange(4):
     ax = fig.add_subplot(1, 4, idx + 1, xticks=[], yticks=[])
-    img = images[idx]
+    img = (images[idx] * 127.5 + 127.5).astype(int)
     plt.imshow(np.transpose(img, (1, 2, 0)))
     ax.set_title(labels[idx])
 plt.show()
@@ -48,7 +48,6 @@ plt.show()
 from architecture.gan import Discriminator
 from architecture.gan import Generator
 from torch.autograd import Variable
-import torchvision
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 latent_dim = 100
@@ -56,8 +55,8 @@ generator = Generator().to(device)
 discriminator = Discriminator().to(device)
 
 criterion = torch.nn.BCELoss()
-d_optimizer = torch.optim.Adam(discriminator.parameters(), lr=3e-4)
-g_optimizer = torch.optim.Adam(generator.parameters(), lr=3e-4) # , betas=(0.5, 0.999)
+d_optimizer = torch.optim.Adam(discriminator.parameters(), lr=1e-2, betas=(0.5, 0.999))
+g_optimizer = torch.optim.Adam(generator.parameters(), lr=1e-2, betas=(0.5, 0.999))
 
 #
 # def generator_loss(label, fake_output):
@@ -138,18 +137,16 @@ def discriminator_train_step(z, batch_size, discriminator, generator, d_optimize
     fake_validity = discriminator(fake_images)
     fake_loss = criterion(fake_validity, Variable(torch.zeros(batch_size, 1)).to(device))
 
-    d_loss = 0.5 * (real_loss + fake_loss)
+    d_loss = real_loss + fake_loss
     d_loss.backward()
     d_optimizer.step()
     return d_loss.data.item()
 
 
 num_epochs = 300
-batch_size = 8
 for epoch in range(num_epochs):
     print('Starting epoch {}...'.format(epoch))
     for i, (images, labels) in enumerate(trainloader):
-        print(f'Batch {i}')
         real_images = Variable(images[3]).to(device)
         batch_size = real_images.size(0)
         z = Variable(torch.randn(batch_size, 100)).to(device)
@@ -180,7 +177,4 @@ for epoch in range(num_epochs):
         ax.set_title(idx)
     plt.show()
 
-torch.save(generator.state_dict(), 'generator_model.pth')
-torch.save(discriminator.state_dict(), 'discriminator_model.pth')
-
-print("Models saved successfully!")
+print('ciao')
