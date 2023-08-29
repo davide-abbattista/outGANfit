@@ -3,6 +3,8 @@ import random
 import os
 import csv
 
+import numpy as np
+
 
 def filter_csv(input_filename):
     allowed_category_ids = []
@@ -58,34 +60,57 @@ def outfit_filter(dataset, filtered_items, outfit_titles):
             outfit['outfit_description'] = outfit_titles[outfit["set_id"]]["url_name"]
             del outfit["set_id"]
 
-            # remove multiple items for the same categories in the outfit itemset
-            bottom = 0
-            shoes = 0
-            top = 0
-            accessory = 0
-            to_remove = []
-            for i, item in enumerate(outfit['items']):
-                category = filtered_items[item["item_id"]]["semantic_category"]
-                if category == 'bottoms':
-                    bottom += 1
-                    if bottom > 1:
-                        to_remove.append(i)
-                elif category == 'shoes':
-                    shoes += 1
-                    if shoes > 1:
-                        to_remove.append(i)
-                elif category == 'tops':
-                    top += 1
-                    if top > 1:
-                        to_remove.append(i)
-                elif category == 'accessories':
-                    accessory += 1
-                    if accessory > 1:
-                        to_remove.append(i)
-            for i in sorted(to_remove, reverse=True):
-                del outfit['items'][i]
+            # # remove multiple items for the same categories in the outfit itemset
+            # bottom = 0
+            # shoes = 0
+            # top = 0
+            # accessory = 0
+            # to_remove = []
+            # for i, item in enumerate(outfit['items']):
+            #     category = filtered_items[item["item_id"]]["semantic_category"]
+            #     if category == 'bottoms':
+            #         bottom += 1
+            #         if bottom > 1:
+            #             to_remove.append(i)
+            #     elif category == 'shoes':
+            #         shoes += 1
+            #         if shoes > 1:
+            #             to_remove.append(i)
+            #     elif category == 'tops':
+            #         top += 1
+            #         if top > 1:
+            #             to_remove.append(i)
+            #     elif category == 'accessories':
+            #         accessory += 1
+            #         if accessory > 1:
+            #             to_remove.append(i)
+            # for i in sorted(to_remove, reverse=True):
+            #     del outfit['items'][i]
 
-            filtered_outfits.append(outfit)
+            # Create different outfits if there are multiple items for the same categories in the outfit itemset
+            if len(categories) > 4:
+                outfit_dict = {'accessories': [], 'bottoms': [], 'shoes': [], 'tops': []}
+                for item in outfit['items']:
+                    category = filtered_items[item["item_id"]]["semantic_category"]
+                    if category == 'bottoms':
+                        outfit_dict['bottoms'].append(item)
+                    elif category == 'shoes':
+                        outfit_dict['shoes'].append(item)
+                    elif category == 'tops':
+                        outfit_dict['tops'].append(item)
+                    elif category == 'accessories':
+                        outfit_dict['accessories'].append(item)
+
+                values = list(outfit_dict.values())
+
+                comb = np.array(np.meshgrid(*values), dtype=object).T
+                comb = comb.reshape(round(comb.size / len(values)), len(values))
+                for r in comb:
+                    new_outfit = {'items': list(r),
+                                  'outfit_description': outfit['outfit_description']}
+                    filtered_outfits.append(new_outfit)
+            else:
+                filtered_outfits.append(outfit)
 
     return filtered_outfits
 

@@ -1,4 +1,3 @@
-import torch
 from torch import nn
 
 
@@ -58,11 +57,6 @@ class Generator(nn.Module):
                                    nn.ConvTranspose2d(16, 3, 4, 2, 1, bias=False),  # 3x128x128
                                    nn.Tanh())
 
-        def init_weights(m):
-            if isinstance(m, nn.Linear):
-                torch.nn.init.normal_(m.weight, 0, 0.02)
-
-        self.model.apply(init_weights)
 
     def forward(self, noise_vector):
         # noise_vector, contitioning_image = input
@@ -122,6 +116,7 @@ class Discriminator(nn.Module):
                                    nn.Conv2d(64 * 8, 1, 2, 1, 0, bias=False),  # 1x1x1
                                    nn.Sigmoid()
                                    )
+
 
     def forward(self, img):
         # img, label = inputs
