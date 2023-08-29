@@ -22,13 +22,13 @@ transform = transforms.Compose([transforms.Resize(128),
                                 ])
 
 trainset = CustomImageDataset(img_dir='.\images', data=train_set, transform=transform)
-trainloader = torch.utils.data.DataLoader(trainset, batch_size=128, shuffle=True)
+trainloader = torch.utils.data.DataLoader(trainset, batch_size=64, shuffle=True)
 
 validationset = CustomImageDataset(img_dir='.\images', data=validation_set, transform=transform)
-validationloader = torch.utils.data.DataLoader(trainset, batch_size=128, shuffle=True)
+validationloader = torch.utils.data.DataLoader(trainset, batch_size=64, shuffle=True)
 
 testset = CustomImageDataset(img_dir='.\images', data=test_set, transform=transform)
-testloader = torch.utils.data.DataLoader(trainset, batch_size=128, shuffle=True)
+testloader = torch.utils.data.DataLoader(trainset, batch_size=64, shuffle=True)
 
 dataiter = iter(trainloader)
 images, labels = next(dataiter)
@@ -54,6 +54,7 @@ latent_dim = 100
 generator = Generator().to(device)
 discriminator = Discriminator().to(device)
 generator.apply(weights_init)
+discriminator.apply(weights_init)
 
 criterion = torch.nn.BCELoss()
 d_optimizer = torch.optim.Adam(discriminator.parameters(), lr=2e-4, betas=(0.5, 0.999))
@@ -122,6 +123,7 @@ for epoch in range(num_epochs):
         batch_size = real_images.size(0)
         # labels = Variable(labels[3]).cuda()
         generator.train()
+        discriminator.train()
         d_loss = discriminator_train_step(len(real_images), discriminator,
                                           generator, d_optimizer, criterion,
                                           real_images)
@@ -137,14 +139,16 @@ for epoch in range(num_epochs):
     # grid = torchvision.utils.make_grid(sample_images, nrow=3, normalize=True).permute(1, 2, 0).numpy()
     # plt.imshow(grid)
     # plt.show()
+    if np.mod(epoch, 10) == 0:
+        z = torch.randn(9, 100).to(device)
+        sample_images = generator(z)
+        images = [el.detach().numpy() for el in sample_images]
+        fig = plt.figure(figsize=(10, 10))
+        for idx in np.arange(9):
+            ax = fig.add_subplot(3, 3, idx + 1, xticks=[], yticks=[])
+            img = (images[idx] * 127.5 + 127.5).astype(int)
+            plt.imshow(np.transpose(img, (1, 2, 0)))
+            ax.set_title(f"Epoch {epoch}")
+        plt.show()
 
-    z = torch.randn(9, 100).to(device)
-    sample_images = generator(z)
-    images = [el.detach().numpy() for el in sample_images]
-    fig = plt.figure(figsize=(10, 10))
-    for idx in np.arange(9):
-        ax = fig.add_subplot(3, 3, idx + 1, xticks=[], yticks=[])
-        img = (images[idx] * 127.5 + 127.5).astype(int)
-        plt.imshow(np.transpose(img, (1, 2, 0)))
-        ax.set_title(idx)
-    plt.show()
+torch.save(generator.state_dict(), 'generator.pth')
