@@ -152,3 +152,22 @@ for epoch in range(num_epochs):
         plt.show()
 
 torch.save(generator.state_dict(), 'generator.pth')
+
+generator = Generator().to(device)
+generator.load_state_dict(torch.load('generator.pth'))
+generator.eval()
+
+# Generate new images using the generator
+num_samples = 9  # Number of images to generate
+z = torch.randn(num_samples, latent_dim, device=device)  # Generate random noise vectors
+with torch.no_grad():
+    generated_images = generator(z)
+
+# Plot the generated images
+generated_images = [image.detach().cpu().numpy() for image in generated_images]
+fig = plt.figure(figsize=(10, 10))
+for idx in range(num_samples):
+    ax = fig.add_subplot(3, 3, idx + 1, xticks=[], yticks=[])
+    img = ((generated_images[idx] + 1) / 2).transpose(1, 2, 0)  # Undo normalization
+    plt.imshow(img)
+plt.show()
