@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 
+# same file of new_gan1 with skip connections
 
 class Encoder(nn.Module):
     def __init__(self, depth_in, n_filters, batchnorm=True):
