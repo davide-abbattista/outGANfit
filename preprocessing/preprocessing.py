@@ -36,7 +36,7 @@ with open('.\json\\filtered\\filtered_polyvore_item_metadata.json', 'r') as filt
 with open('.\json\polyvore_outfit_titles.json', 'r') as polyvore_outfit_titles:
     outfit_titles = json.load(polyvore_outfit_titles)
 
-filtered_dataset = outfit_filter(d1 + d2 + d3, filtered_items_json, outfit_titles)
+filtered_dataset = outfit_filter(dataset_json, filtered_items_json, outfit_titles)
 
 train_set, validation_set, test_set = train_validation_test_split(filtered_dataset, test_ratio=0.2)
 
@@ -53,5 +53,5 @@ with open('.\json\\filtered\\test_set.json', 'w') as test_set_file:
 
 # Remove from the images folder all the items that don't belong to the specified categories
 
-items = [el + '.jpg' for el in list(filtered_items_json.keys())]
-remove_images(folder_path='../images', images_to_keep=items)
+# items = [el + '.jpg' for el in list(filtered_items_json.keys())]
+# remove_images(folder_path='../images', images_to_keep=items)

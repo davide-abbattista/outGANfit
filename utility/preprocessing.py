@@ -12,9 +12,18 @@ def filter_csv(input_filename):
         csv_reader = csv.reader(file)
         for row in csv_reader:
             category = row[2]
-            if (category == 'bottoms' and 'pants' in row[1].lower()) or (
+            if (category == 'bottoms' and 'pant' in row[1].lower()) or (
+                    category == 'bottoms' and 'pants' in row[1].lower()) or (
                     category == 'bottoms' and 'jeans' in row[1].lower()) or (
-                    category == 'tops' and 'shirt' in row[1].lower()) or (category == 'shoes') or (
+                    category == 'tops' and 'shirt' in row[1].lower()) or (
+                    category == 'tops' and 'sleeveless' in row[1].lower()) or (
+                    category == 'tops' and 'tunic' in row[1].lower()) or (
+                    category == 'tops' and 'tank' in row[1].lower()) or (
+                    category == 'tops' and 'bra' in row[1].lower()) or (
+                    category == 'tops' and 'bodie' in row[1].lower()) or (
+                    category == 'tops' and 'polos' in row[1].lower()) or (category == 'shoes') or (
+                    # category == 'sunglasses') or (
+                    # category == 'accessories' and 'sunglasses' in row[1].lower()) or (
                     category == 'accessories'):
                 allowed_category_ids.append(row[0])
     return list(set(allowed_category_ids))
@@ -24,6 +33,18 @@ def specified_categories_filter(items, allowed_category_ids):
     filtered_data = {key: value for key, value in items.items() if
                      value.get("category_id") in allowed_category_ids}
     return json.dumps(filtered_data, indent=4)
+
+
+# def specified_categories_filter(items, allowed_category_ids):
+#     accessories_ids = [53, 56, 58, 59, 68, 69, 231, 251, 269, 270, 299, 300, 301, 302, 306, 4460, 4463, 4467, 4468, 4470,
+#                     4472, 4473, 51, 52, 57, 61]
+#     dict = {str(num): 0 for num in accessories_ids}
+#     filtered_data = {key: value for key, value in items.items() if
+#                      value.get("category_id") in allowed_category_ids}
+#     for key, value in items.items():
+#         if value.get("category_id") in dict.keys():
+#             dict[value.get("category_id")] += 1
+#     return json.dumps(filtered_data, indent=4), dict
 
 
 def eliminate_multiple_outfit_instances(dataset):
@@ -55,6 +76,7 @@ def outfit_filter(dataset, filtered_items, outfit_titles):
             outfit['items'] = items
             for item in outfit['items']:
                 del item['index']
+
             outfit['items'] = [item | {"category": filtered_items[item["item_id"]]["semantic_category"]} for item in
                                outfit['items']]
             outfit['outfit_description'] = outfit_titles[outfit["set_id"]]["url_name"]
@@ -91,7 +113,7 @@ def outfit_filter(dataset, filtered_items, outfit_titles):
             if len(categories) > 4:
                 outfit_dict = {'accessories': [], 'bottoms': [], 'shoes': [], 'tops': []}
                 for item in outfit['items']:
-                    category = filtered_items[item["item_id"]]["semantic_category"]
+                    category = item['category']
                     if category == 'bottoms':
                         outfit_dict['bottoms'].append(item)
                     elif category == 'shoes':
