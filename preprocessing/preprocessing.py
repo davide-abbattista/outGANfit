@@ -38,16 +38,29 @@ with open('.\json\polyvore_outfit_titles.json', 'r') as polyvore_outfit_titles:
 
 filtered_dataset = outfit_filter(dataset_json, filtered_items_json, outfit_titles)
 
-train_set, validation_set, test_set = train_validation_test_split(filtered_dataset, test_ratio=0.2)
+gan_train_set, gan_validation_set, gan_test_set = train_validation_test_split(filtered_dataset, test_ratio=0.2)
 
-with open('.\json\\filtered\\train_set.json', 'w') as train_set_file:
-    json.dump(train_set, train_set_file, indent=4)
+with open('.\json\\filtered\\gan_train_set.json', 'w') as gan_train_set_file:
+    json.dump(gan_train_set, gan_train_set_file, indent=4)
 
-with open('.\json\\filtered\\validation_set.json', 'w') as validation_set_file:
-    json.dump(validation_set, validation_set_file, indent=4)
+with open('.\json\\filtered\\gan_validation_set.json', 'w') as gan_validation_set_file:
+    json.dump(gan_validation_set, gan_validation_set_file, indent=4)
 
-with open('.\json\\filtered\\test_set.json', 'w') as test_set_file:
-    json.dump(test_set, test_set_file, indent=4)
+with open('.\json\\filtered\\gan_test_set.json', 'w') as gan_test_set_file:
+    json.dump(gan_test_set, gan_test_set_file, indent=4)
+
+# ----------------------------------------------------------------------------------------------------------------------
+ae_train_set, ae_validation_set, ae_test_set = train_validation_test_split(
+    [{key: value} for key, value in filtered_items_json.items()], test_ratio=0.2)
+
+with open('.\json\\filtered\\ae_train_set.json', 'w') as ae_train_set_file:
+    json.dump(ae_train_set, ae_train_set_file, indent=4)
+
+with open('.\json\\filtered\\ae_validation_set.json', 'w') as ae_validation_set_file:
+    json.dump(ae_validation_set, ae_validation_set_file, indent=4)
+
+with open('.\json\\filtered\\ae_test_set.json', 'w') as ae_test_set_file:
+    json.dump(ae_test_set, ae_test_set_file, indent=4)
 
 # ----------------------------------------------------------------------------------------------------------------------
 

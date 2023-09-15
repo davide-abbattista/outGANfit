@@ -12,25 +12,24 @@ def filter_csv(input_filename):
         csv_reader = csv.reader(file)
         for row in csv_reader:
             category = row[2]
-            if (category == 'bottoms' and 'pant' in row[1].lower()) or (
-                    category == 'bottoms' and 'pants' in row[1].lower()) or (
-                    category == 'bottoms' and 'jeans' in row[1].lower()) or (
-                    category == 'tops' and 'shirt' in row[1].lower()) or (
-                    category == 'tops' and 'sleeveless' in row[1].lower()) or (
-                    category == 'tops' and 'tunic' in row[1].lower()) or (
-                    category == 'tops' and 'tank' in row[1].lower()) or (
-                    category == 'tops' and 'bra' in row[1].lower()) or (
-                    category == 'tops' and 'bodie' in row[1].lower()) or (
-                    category == 'tops' and 'polos' in row[1].lower()) or (category == 'shoes') or (
-                    # category == 'sunglasses') or (
-                    # category == 'accessories' and 'sunglasses' in row[1].lower()) or (
-                    category == 'accessories'):
+            # if (category == 'bottoms' and 'pant' in row[1].lower()) or (
+            #         category == 'bottoms' and 'pants' in row[1].lower()) or (
+            #         category == 'bottoms' and 'jeans' in row[1].lower()) or (
+            #         category == 'tops' and 'shirt' in row[1].lower()) or (
+            #         category == 'tops' and 'sleeveless' in row[1].lower()) or (
+            #         category == 'tops' and 'tunic' in row[1].lower()) or (
+            #         category == 'tops' and 'tank' in row[1].lower()) or (
+            #         category == 'tops' and 'bra' in row[1].lower()) or (
+            #         category == 'tops' and 'bodie' in row[1].lower()) or (
+            #         category == 'tops' and 'polos' in row[1].lower()) or (category == 'shoes') or (
+            #         category == 'accessories'):
+            if (category == 'bottoms') or (category == 'tops') or (category == 'accessories') or (category == 'shoes'):
                 allowed_category_ids.append(row[0])
     return list(set(allowed_category_ids))
 
 
 def specified_categories_filter(items, allowed_category_ids):
-    filtered_data = {key: value for key, value in items.items() if
+    filtered_data = {key: value.get("semantic_category") for key, value in items.items() if
                      value.get("category_id") in allowed_category_ids}
     return json.dumps(filtered_data, indent=4)
 
@@ -69,7 +68,7 @@ def outfit_filter(dataset, filtered_items, outfit_titles):
     item_ids = list(filtered_items.keys())
     for outfit in dataset:
         items = [item for item in outfit['items'] if item['item_id'] in item_ids]
-        categories = [filtered_items[item["item_id"]]["semantic_category"] for item in items]
+        categories = [filtered_items[item["item_id"]] for item in items]
 
         # consider the outfit only if it contains items of all the four wanted categories
         if len(set(categories)) == 4:
@@ -77,7 +76,7 @@ def outfit_filter(dataset, filtered_items, outfit_titles):
             for item in outfit['items']:
                 del item['index']
 
-            outfit['items'] = [item | {"category": filtered_items[item["item_id"]]["semantic_category"]} for item in
+            outfit['items'] = [item | {"category": filtered_items[item["item_id"]]} for item in
                                outfit['items']]
             outfit['outfit_description'] = outfit_titles[outfit["set_id"]]["url_name"]
             del outfit["set_id"]
@@ -89,7 +88,7 @@ def outfit_filter(dataset, filtered_items, outfit_titles):
             # accessory = 0
             # to_remove = []
             # for i, item in enumerate(outfit['items']):
-            #     category = filtered_items[item["item_id"]]["semantic_category"]
+            #     category = filtered_items[item["item_id"]]
             #     if category == 'bottoms':
             #         bottom += 1
             #         if bottom > 1:

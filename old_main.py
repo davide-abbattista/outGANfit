@@ -5,7 +5,7 @@ import torch
 from matplotlib import pyplot as plt
 from torchvision import transforms
 
-from utility.custom_image_dataset import CustomImageDataset
+from utility.gan_custom_image_dataset import CustomImageDataset
 
 with open('.\preprocessing\json\\filtered\\train_set.json', 'r') as train_data:
     train_set = json.load(train_data)
@@ -45,9 +45,9 @@ for idx in np.arange(4):
 plt.show()
 
 #######################################################################################################################
-from architecture.new_gan2 import Discriminator
-from architecture.new_gan2 import Generator
-from utility.architecture import weights_init
+from architecture.old_gan import Discriminator
+from architecture.old_gan import Generator
+from utility.weights_init import weights_init
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 generator = Generator().to(device)
