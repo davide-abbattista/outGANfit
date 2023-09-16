@@ -7,13 +7,13 @@ from torchvision import transforms
 
 from utility.gan_custom_image_dataset import CustomImageDataset
 
-with open('.\preprocessing\json\\filtered\\train_set.json', 'r') as train_data:
+with open('.\preprocessing\json\\filtered\\gan_train_set.json', 'r') as train_data:
     train_set = json.load(train_data)
 
-with open('.\preprocessing\json\\filtered\\validation_set.json', 'r') as validation_data:
+with open('.\preprocessing\json\\filtered\\gan_validation_set.json', 'r') as validation_data:
     validation_set = json.load(validation_data)
 
-with open('.\preprocessing\json\\filtered\\test_set.json', 'r') as test_data:
+with open('.\preprocessing\json\\filtered\\gan_test_set.json', 'r') as test_data:
     test_set = json.load(test_data)
 
 transform = transforms.Compose([transforms.Resize(128),
