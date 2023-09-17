@@ -5,6 +5,7 @@ import csv
 
 import numpy as np
 
+from utility.embeddings import get_most_different_item
 
 def filter_csv(input_filename):
     allowed_category_ids = []
@@ -146,6 +147,17 @@ def train_validation_test_split(dataset, test_ratio, shuffle=False, seed=None):
     test_idx = round(len(dataset) * (1 - test_ratio))
     val_idx = round(test_idx * (1 - val_ratio))
     return dataset[: val_idx], dataset[val_idx: test_idx], dataset[test_idx:]
+
+
+def add_not_compatible_items(dataset_json, item_ids, item_categories, embeddings):
+    for outfit in dataset_json:
+        outfit['not_compatible'] = []
+        items = outfit['items']
+        for item in items:
+            category = item['category']
+            if category != 'tops':
+                different_item = get_most_different_item(item['item_id'], item_ids, item_categories, embeddings)
+                outfit['not_compatible'].append({'item_id': different_item, 'category': category})
 
 
 def remove_images(folder_path, images_to_keep):

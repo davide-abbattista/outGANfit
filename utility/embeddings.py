@@ -33,14 +33,14 @@ def get_embedding(item, item_ids, item_categories, embeddings):
     return embeddings[index], item_categories[index]
 
 
-def get_most_similar_item(item, items_ids, item_categories, embeddings):
-    item_embedding, item_category = get_embedding(item, items_ids, item_categories, embeddings)
+def get_most_similar_item(item, item_ids, item_categories, embeddings):
+    item_embedding, item_category = get_embedding(item, item_ids, item_categories, embeddings)
     distances = torch.cdist(torch.Tensor(item_embedding).unsqueeze(0).unsqueeze(0), torch.Tensor(embeddings))
     ordered_embedding_indexes = torch.argsort(distances).squeeze(0)  # why squeeze(0)
     for index in ordered_embedding_indexes[0]:  # why [0]
-        if item != items_ids[index]:
+        if item != item_ids[index]:
             if item_category == item_categories[index]:
-                return items_ids[index]
+                return item_ids[index]
 
 
 def get_most_different_item(item, items_ids, item_categories, embeddings):
