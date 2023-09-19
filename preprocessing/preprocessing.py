@@ -55,31 +55,51 @@ dataset_json = eliminate_multiple_outfit_instances(d1 + d2 + d3)
 with open('.\json\polyvore_outfit_titles.json', 'r') as polyvore_outfit_titles:
     outfit_titles = json.load(polyvore_outfit_titles)
 
-filtered_dataset = outfit_filter(dataset_json, filtered_items_json, outfit_titles)
+compatible_tops_accessories, compatible_tops_bottoms, compatible_tops_shoes = outfit_filter(dataset_json, filtered_items_json, outfit_titles)
 
 # ----------------------------------------------------------------------------------------------------------------------
 
 # Modify the filtered dataset in order to put into each outfit itemset an accessory, a bottom and a pair of shoes
 # that are not compatible with the top (used to train the compatibility discriminator)
 
-item_ids, item_categories, embeddings = get_embeddings()
-
-filtered_dataset = add_not_compatible_items(dataset_json, item_ids, item_categories, embeddings)
+# item_ids, item_categories, embeddings = get_embeddings()
+#
+# filtered_dataset = add_not_compatible_items(filtered_dataset, item_ids, item_categories, embeddings)
 
 # ----------------------------------------------------------------------------------------------------------------------
 
 # Create the json files containing the train, validation and test data for the learning of the gan architecture
 
-gan_train_set, gan_validation_set, gan_test_set = train_validation_test_split(filtered_dataset, test_ratio=0.2)
+gan_train_set_ta, gan_validation_set_ta, gan_test_set_ta = train_validation_test_split(compatible_tops_accessories, test_ratio=0.2)
+gan_train_set_tb, gan_validation_set_tb, gan_test_set_tb = train_validation_test_split(compatible_tops_bottoms, test_ratio=0.2)
+gan_train_set_ts, gan_validation_set_ts, gan_test_set_ts = train_validation_test_split(compatible_tops_shoes, test_ratio=0.2)
 
-with open('.\json\\filtered\\gan_train_set.json', 'w') as gan_train_set_file:
-    json.dump(gan_train_set, gan_train_set_file, indent=4)
+with open('.\json\\filtered\\gan_train_set_ta.json', 'w') as gan_train_set_ta_file:
+    json.dump(gan_train_set_ta, gan_train_set_ta_file, indent=4)
 
-with open('.\json\\filtered\\gan_validation_set.json', 'w') as gan_validation_set_file:
-    json.dump(gan_validation_set, gan_validation_set_file, indent=4)
+with open('.\json\\filtered\\gan_validation_set_ta.json', 'w') as gan_validation_set_ta_file:
+    json.dump(gan_validation_set_ta, gan_validation_set_ta_file, indent=4)
 
-with open('.\json\\filtered\\gan_test_set.json', 'w') as gan_test_set_file:
-    json.dump(gan_test_set, gan_test_set_file, indent=4)
+with open('.\json\\filtered\\gan_test_set_ta.json', 'w') as gan_test_set_ta_file:
+    json.dump(gan_test_set_ta, gan_test_set_ta_file, indent=4)
+
+with open('.\json\\filtered\\gan_train_set_tb.json', 'w') as gan_train_set_tb_file:
+    json.dump(gan_train_set_tb, gan_train_set_tb_file, indent=4)
+
+with open('.\json\\filtered\\gan_validation_set_tb.json', 'w') as gan_validation_set_tb_file:
+    json.dump(gan_validation_set_tb, gan_validation_set_tb_file, indent=4)
+
+with open('.\json\\filtered\\gan_test_set_tb.json', 'w') as gan_test_set_tb_file:
+    json.dump(gan_test_set_tb, gan_test_set_tb_file, indent=4)
+
+with open('.\json\\filtered\\gan_train_set_ts.json', 'w') as gan_train_set_ts_file:
+    json.dump(gan_train_set_ts, gan_train_set_ts_file, indent=4)
+
+with open('.\json\\filtered\\gan_validation_set_ts.json', 'w') as gan_validation_set_ts_file:
+    json.dump(gan_validation_set_ts, gan_validation_set_ts_file, indent=4)
+
+with open('.\json\\filtered\\gan_test_set_ts.json', 'w') as gan_test_set_ts_file:
+    json.dump(gan_test_set_ts, gan_test_set_ts_file, indent=4)
 
 # ----------------------------------------------------------------------------------------------------------------------
 

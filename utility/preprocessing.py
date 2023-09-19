@@ -64,15 +64,91 @@ def eliminate_multiple_outfit_instances(dataset):
     return dataset
 
 
+# def outfit_filter(dataset, filtered_items, outfit_titles):
+#     filtered_outfits = []
+#     item_ids = list(filtered_items.keys())
+#     for outfit in dataset:
+#         items = [item for item in outfit['items'] if item['item_id'] in item_ids]
+#         categories = [filtered_items[item["item_id"]] for item in items]
+#
+#         # consider the outfit only if it contains items of all the four wanted categories
+#         if len(set(categories)) == 4:
+#             outfit['items'] = items
+#             for item in outfit['items']:
+#                 del item['index']
+#
+#             outfit['items'] = [item | {"category": filtered_items[item["item_id"]]} for item in
+#                                outfit['items']]
+#             outfit['outfit_description'] = outfit_titles[outfit["set_id"]]["url_name"]
+#             del outfit["set_id"]
+#
+#             # # remove multiple items for the same categories in the outfit itemset
+#             # bottom = 0
+#             # shoes = 0
+#             # top = 0
+#             # accessory = 0
+#             # to_remove = []
+#             # for i, item in enumerate(outfit['items']):
+#             #     category = filtered_items[item["item_id"]]
+#             #     if category == 'bottoms':
+#             #         bottom += 1
+#             #         if bottom > 1:
+#             #             to_remove.append(i)
+#             #     elif category == 'shoes':
+#             #         shoes += 1
+#             #         if shoes > 1:
+#             #             to_remove.append(i)
+#             #     elif category == 'tops':
+#             #         top += 1
+#             #         if top > 1:
+#             #             to_remove.append(i)
+#             #     elif category == 'accessories':
+#             #         accessory += 1
+#             #         if accessory > 1:
+#             #             to_remove.append(i)
+#             # for i in sorted(to_remove, reverse=True):
+#             #     del outfit['items'][i]
+#
+#             # Create different outfits if there are multiple items for the same categories in the outfit itemset
+#             if len(categories) > 4:
+#                 outfit_dict = {'accessories': [], 'bottoms': [], 'shoes': [], 'tops': []}
+#                 for item in outfit['items']:
+#                     category = item['category']
+#                     if category == 'bottoms':
+#                         outfit_dict['bottoms'].append(item)
+#                     elif category == 'shoes':
+#                         outfit_dict['shoes'].append(item)
+#                     elif category == 'tops':
+#                         outfit_dict['tops'].append(item)
+#                     elif category == 'accessories':
+#                         outfit_dict['accessories'].append(item)
+#
+#                 values = list(outfit_dict.values())
+#
+#                 comb = np.array(np.meshgrid(*values), dtype=object).T
+#                 comb = comb.reshape(round(comb.size / len(values)), len(values))
+#                 for r in comb:
+#                     new_outfit = {'items': list(r),
+#                                   'outfit_description': outfit['outfit_description']}
+#                     filtered_outfits.append(new_outfit)
+#             else:
+#                 filtered_outfits.append(outfit)
+#
+#     return filtered_outfits
+
 def outfit_filter(dataset, filtered_items, outfit_titles):
-    filtered_outfits = []
     item_ids = list(filtered_items.keys())
+
+    compatible_tops_accessories = []
+    compatible_tops_bottoms = []
+    compatible_tops_shoes = []
+
     for outfit in dataset:
         items = [item for item in outfit['items'] if item['item_id'] in item_ids]
         categories = [filtered_items[item["item_id"]] for item in items]
 
         # consider the outfit only if it contains items of all the four wanted categories
-        if len(set(categories)) == 4:
+        if len(set(categories)) >= 2 and 'tops' in categories:
             outfit['items'] = items
             for item in outfit['items']:
                 del item['index']
@@ -82,59 +158,17 @@ def outfit_filter(dataset, filtered_items, outfit_titles):
             outfit['outfit_description'] = outfit_titles[outfit["set_id"]]["url_name"]
             del outfit["set_id"]
 
-            # # remove multiple items for the same categories in the outfit itemset
-            # bottom = 0
-            # shoes = 0
-            # top = 0
-            # accessory = 0
-            # to_remove = []
-            # for i, item in enumerate(outfit['items']):
-            #     category = filtered_items[item["item_id"]]
-            #     if category == 'bottoms':
-            #         bottom += 1
-            #         if bottom > 1:
-            #             to_remove.append(i)
-            #     elif category == 'shoes':
-            #         shoes += 1
-            #         if shoes > 1:
-            #             to_remove.append(i)
-            #     elif category == 'tops':
-            #         top += 1
-            #         if top > 1:
-            #             to_remove.append(i)
-            #     elif category == 'accessories':
-            #         accessory += 1
-            #         if accessory > 1:
-            #             to_remove.append(i)
-            # for i in sorted(to_remove, reverse=True):
-            #     del outfit['items'][i]
+            outfit_description = outfit['outfit_description']
+            top = [item for item in outfit['items'] if item['category'] == 'tops'][0]
+            for item in outfit['items']:
+                if item['category'] == 'accessories':
+                    compatible_tops_accessories.append({'items': [top | item], 'outfit_description': outfit_description})
+                if item['category'] == 'bottoms':
+                    compatible_tops_bottoms.append({'items': [top | item], 'outfit_description': outfit_description})
+                if item['category'] == 'shoes':
+                    compatible_tops_shoes.append({'items': [top | item], 'outfit_description': outfit_description})
 
-            # Create different outfits if there are multiple items for the same categories in the outfit itemset
-            if len(categories) > 4:
-                outfit_dict = {'accessories': [], 'bottoms': [], 'shoes': [], 'tops': []}
-                for item in outfit['items']:
-                    category = item['category']
-                    if category == 'bottoms':
-                        outfit_dict['bottoms'].append(item)
-                    elif category == 'shoes':
-                        outfit_dict['shoes'].append(item)
-                    elif category == 'tops':
-                        outfit_dict['tops'].append(item)
-                    elif category == 'accessories':
-                        outfit_dict['accessories'].append(item)
-
-                values = list(outfit_dict.values())
-
-                comb = np.array(np.meshgrid(*values), dtype=object).T
-                comb = comb.reshape(round(comb.size / len(values)), len(values))
-                for r in comb:
-                    new_outfit = {'items': list(r),
-                                  'outfit_description': outfit['outfit_description']}
-                    filtered_outfits.append(new_outfit)
-            else:
-                filtered_outfits.append(outfit)
-
-    return filtered_outfits
+    return compatible_tops_accessories, compatible_tops_bottoms, compatible_tops_shoes
 
 
 def train_validation_test_split(dataset, test_ratio, shuffle=False, seed=None):
