@@ -10,28 +10,64 @@ from utility.weights_init import weights_init
 from utility.gan_custom_image_dataset import CustomImageDataset
 from utility.fid import calculate_fid
 
-with open('.\preprocessing\json\\filtered\\gan_train_set.json', 'r') as train_data:
-    train_set = json.load(train_data)
+with open('.\preprocessing\json\\filtered\\gan_train_set_ta.json', 'r') as train_data_ta:
+    train_set_ta = json.load(train_data_ta)
 
-with open('.\preprocessing\json\\filtered\\gan_validation_set.json', 'r') as validation_data:
-    validation_set = json.load(validation_data)
+with open('.\preprocessing\json\\filtered\\gan_validation_set_ta.json', 'r') as validation_data_ta:
+    validation_set_ta = json.load(validation_data_ta)
 
-with open('.\preprocessing\json\\filtered\\gan_test_set.json', 'r') as test_data:
-    test_set = json.load(test_data)
+with open('.\preprocessing\json\\filtered\\gan_test_set_ta.json', 'r') as test_data_ta:
+    test_set_ta = json.load(test_data_ta)
+
+with open('.\preprocessing\json\\filtered\\gan_train_set_tb.json', 'r') as train_data_tb:
+    train_set_tb = json.load(train_data_tb)
+
+with open('.\preprocessing\json\\filtered\\gan_validation_set_tb.json', 'r') as validation_data_tb:
+    validation_set_tb = json.load(validation_data_tb)
+
+with open('.\preprocessing\json\\filtered\\gan_test_set_tb.json', 'r') as test_data_tb:
+    test_set_tb = json.load(test_data_tb)
+
+with open('.\preprocessing\json\\filtered\\gan_train_set_ts.json', 'r') as train_data_ts:
+    train_set_ts = json.load(train_data_ts)
+
+with open('.\preprocessing\json\\filtered\\gan_validation_set_ts.json', 'r') as validation_data_ts:
+    validation_set_ts = json.load(validation_data_ts)
+
+with open('.\preprocessing\json\\filtered\\gan_test_set_ts.json', 'r') as test_data_ts:
+    test_set_ts = json.load(test_data_ts)
 
 transform = transforms.Compose([transforms.Resize(128),
                                 transforms.Normalize([127.5, 127.5, 127.5], [127.5, 127.5, 127.5]),  # range [-1, 1]
                                 # transforms.Normalize([0, 0, 0], [255, 255, 255])  # map values in the range [0, 1]
                                 ])
 
-trainset = CustomImageDataset(img_dir='.\images', data=train_set, transform=transform)
-trainloader = torch.utils.data.DataLoader(trainset, batch_size=64, shuffle=True)
+trainset_ta = CustomImageDataset(img_dir='.\images', data=train_set_ta, transform=transform)
+trainloader_ta = torch.utils.data.DataLoader(trainset_ta, batch_size=64, shuffle=True)
 
-validationset = CustomImageDataset(img_dir='.\images', data=validation_set, transform=transform)
-validationloader = torch.utils.data.DataLoader(trainset, batch_size=64, shuffle=True)
+validationset_ta = CustomImageDataset(img_dir='.\images', data=validation_set_ta, transform=transform)
+validationloader_ta = torch.utils.data.DataLoader(trainset_ta, batch_size=64, shuffle=True)
 
-testset = CustomImageDataset(img_dir='.\images', data=test_set, transform=transform)
-testloader = torch.utils.data.DataLoader(trainset, batch_size=64, shuffle=True)
+testset_ta = CustomImageDataset(img_dir='.\images', data=test_set_ta, transform=transform)
+testloader_ta = torch.utils.data.DataLoader(trainset_ta, batch_size=64, shuffle=True)
+
+trainset_tb = CustomImageDataset(img_dir='.\images', data=train_set_tb, transform=transform)
+trainloader_tb = torch.utils.data.DataLoader(trainset_tb, batch_size=64, shuffle=True)
+
+validationset_tb = CustomImageDataset(img_dir='.\images', data=validation_set_tb, transform=transform)
+validationloader_tb = torch.utils.data.DataLoader(trainset_tb, batch_size=64, shuffle=True)
+
+testset_tb = CustomImageDataset(img_dir='.\images', data=test_set_tb, transform=transform)
+testloader_tb = torch.utils.data.DataLoader(trainset_tb, batch_size=64, shuffle=True)
+
+trainset_ts = CustomImageDataset(img_dir='.\images', data=train_set_ts, transform=transform)
+trainloader_ts = torch.utils.data.DataLoader(trainset_ts, batch_size=64, shuffle=True)
+
+validationset_ts = CustomImageDataset(img_dir='.\images', data=validation_set_ts, transform=transform)
+validationloader_ts = torch.utils.data.DataLoader(trainset_ts, batch_size=64, shuffle=True)
+
+testset_ts = CustomImageDataset(img_dir='.\images', data=test_set_ts, transform=transform)
+testloader_ts = torch.utils.data.DataLoader(trainset_ts, batch_size=64, shuffle=True)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -155,7 +191,7 @@ def train(category, generator, real_fake_discriminator, compatibility_discrimina
     train_fids = []
     validation_fids = []
 
-    for epoch in range(num_epochs):
+    for epoch in range(1, num_epochs + 1):
         print('\nStarting epoch {}...'.format(epoch))
         train_d_rf_loss = 0.0
         train_d_c_loss = 0.0
@@ -163,17 +199,9 @@ def train(category, generator, real_fake_discriminator, compatibility_discrimina
         train_fid = 0.0
 
         for images, _ in trainloader:
-            match category:
-                case 'accessories':
-                    real_images = images[0].to(device)
-                    not_compatible_images = images[4].to(device)
-                case 'bottoms':
-                    real_images = images[1].to(device)
-                    not_compatible_images = images[5].to(device)
-                case 'shoes':
-                    real_images = images[2].to(device)
-                    not_compatible_images = images[6].to(device)
-            cond_images = images[3].to(device)
+            real_images = images[0].to(device)
+            not_compatible_images = images[1].to(device)
+            cond_images = images[2].to(device)
 
             batch_size = real_images.size(0)
 
@@ -217,14 +245,8 @@ def train(category, generator, real_fake_discriminator, compatibility_discrimina
         validation_fid = 0.0
 
         for images, _ in validationloader:
-            match category:
-                case 'accessories':
-                    real_images = images[0].to(device)
-                case 'bottoms':
-                    real_images = images[1].to(device)
-                case 'shoes':
-                    real_images = images[2].to(device)
-            cond_images = images[3].to(device)
+            real_images = images[0].to(device)
+            cond_images = images[1].to(device)
 
             validation_fid += calculate_fid(real_images, generator(cond_images), inception_model, device) * batch_size
 
@@ -305,11 +327,11 @@ def train(category, generator, real_fake_discriminator, compatibility_discrimina
 
 
 train('accessories', accessories_generator, accessories_real_fake_discriminator,
-      accessories_compatibility_discriminator, trainloader, validationloader,
+      accessories_compatibility_discriminator, trainloader_ta, validationloader_ta,
       criterion, accessories_d_c_optimizer, accessories_d_rf_optimizer, accessories_g_optimizer, device)
-train('bottoms', bottoms_generator, bottoms_real_fake_discriminator, bottoms_compatibility_discriminator, trainloader,
-      validationloader,
+train('bottoms', bottoms_generator, bottoms_real_fake_discriminator, bottoms_compatibility_discriminator, trainloader_tb,
+      validationloader_tb,
       criterion, bottoms_d_c_optimizer, bottoms_d_rf_optimizer, bottoms_g_optimizer, device)
-train('shoes', shoes_generator, shoes_real_fake_discriminator, shoes_compatibility_discriminator, trainloader,
-      validationloader,
+train('shoes', shoes_generator, shoes_real_fake_discriminator, shoes_compatibility_discriminator, trainloader_ts,
+      validationloader_ts,
       criterion, shoes_d_c_optimizer, shoes_d_rf_optimizer, shoes_g_optimizer, device)

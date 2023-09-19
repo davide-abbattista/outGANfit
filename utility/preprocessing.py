@@ -136,6 +136,7 @@ def eliminate_multiple_outfit_instances(dataset):
 #
 #     return filtered_outfits
 
+
 def outfit_filter(dataset, filtered_items, outfit_titles):
     item_ids = list(filtered_items.keys())
 

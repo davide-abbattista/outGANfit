@@ -87,7 +87,7 @@ class AutoEncoder(nn.Module):
     def forward(self, x):
         code = self.encoder(x)
         out = self.decoder(code)
-        return out
+        return out, code
 
 
 class Encoder(nn.Module):
@@ -144,3 +144,4 @@ class Decoder(nn.Module):
 
     def forward(self, q):
         return torch.sigmoid(self.dec(q))
+        # return self.dec(q)

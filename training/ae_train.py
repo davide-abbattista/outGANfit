@@ -22,13 +22,20 @@ with open('..\preprocessing\json\\filtered\\ae_test_set.json', 'r') as test_data
     test_set = json.load(test_data)
 
 train_transform = transforms.Compose([
+    transforms.Normalize([0,0,0],[255, 255, 255]),
     transforms.RandomCrop(size=128, pad_if_needed=True),
     transforms.RandomHorizontalFlip(),
     transforms.RandomVerticalFlip(),
     # transforms.ToTensor(),
 ])
 
-val_test_transform = transforms.Compose([
+val_transform = transforms.Compose([
+    transforms.Normalize([0,0,0],[255, 255, 255]),
+    transforms.Resize(128),
+    # transforms.ToTensor()
+])
+
+test_transform = transforms.Compose([
     transforms.Resize(128),
     # transforms.ToTensor()
 ])
@@ -36,11 +43,11 @@ val_test_transform = transforms.Compose([
 trainset = CustomImageDataset(img_dir='..\images', data=train_set, transform=train_transform)
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=128, shuffle=True)
 
-validationset = CustomImageDataset(img_dir='..\images', data=validation_set, transform=val_test_transform)
-validationloader = torch.utils.data.DataLoader(trainset, batch_size=128, shuffle=False)
+validationset = CustomImageDataset(img_dir='..\images', data=validation_set, transform=val_transform)
+validationloader = torch.utils.data.DataLoader(validationset, batch_size=128, shuffle=False)
 
-testset = CustomImageDataset(img_dir='..\images', data=test_set, transform=val_test_transform)
-testloader = torch.utils.data.DataLoader(trainset, batch_size=128, shuffle=False)
+testset = CustomImageDataset(img_dir='..\images', data=test_set, transform=test_transform)
+testloader = torch.utils.data.DataLoader(testset, batch_size=128, shuffle=False)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
