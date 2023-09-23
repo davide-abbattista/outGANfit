@@ -108,7 +108,7 @@ class Encoder(nn.Module):
             nn.Flatten(start_dim=1),
             nn.Linear(512 * 2 * 2, 512),
             nn.ReLU(),
-            nn.Linear(512, 128)
+            nn.Linear(512, 256)
         )
 
     def forward(self, x):
@@ -119,7 +119,7 @@ class Decoder(nn.Module):
     def __init__(self, C=512, M=128, out_chan=1):
         super(Decoder, self).__init__()
         self.dec = nn.Sequential(
-            nn.Linear(128, 512),
+            nn.Linear(256, 512),
             nn.ReLU(),
             nn.Linear(512, 512 * 2 * 2),
             nn.Unflatten(1, (512, 2, 2)),

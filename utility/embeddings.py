@@ -1,15 +1,37 @@
-import json
-
 import numpy as np
 import torch
+from torchvision import transforms
+
+from architecture.ae import AutoEncoder
+from utility.custom_image_dataset import CustomImageDatasetAE
+from utility.utils import read_json, write_json
 
 
-def generate_embeddings(dataloader, ae, items):
+def generate_embeddings(items):
+    ae_train_set = read_json('../preprocessing/json/filtered/ae_train_set.json')
+    ae_validation_set = read_json('../preprocessing/json/filtered/ae_validation_set.json')
+    ae_test_set = read_json('../preprocessing/json/filtered/ae_test_set.json')
+
+    transform = transforms.Compose([
+        transforms.Normalize([0, 0, 0], [255, 255, 255]),
+        transforms.Resize(128),
+    ])
+
+    dataset = ae_train_set + ae_validation_set + ae_test_set
+    totalset = CustomImageDatasetAE(img_dir='../images', data=dataset, transform=transform)
+    loader = torch.utils.data.DataLoader(totalset, batch_size=128, shuffle=True)
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    ae = AutoEncoder.to(device)
+    checkpoint = torch.load('../checkpoints/trained_ae_128.pth', map_location=torch.device('cpu'))
+    ae.load_state_dict(checkpoint)
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     embeddings = []
     ae.eval()
     with torch.no_grad():
-        for data, _ in dataloader:
+        for data, _ in loader:
             data = data.to(device)
             _, embedds = ae(data)
             embeddings.append(embedds.reshape(embedds.shape[0], -1).cpu().numpy())
@@ -18,13 +40,9 @@ def generate_embeddings(dataloader, ae, items):
     item_ids = [int(id) for id in list(items.keys())]
     item_categories = list(items.values())
 
-    with open('.\json\\embeddings\\item_ids.json', 'w') as item_ids_file:
-        json.dump(item_ids, item_ids_file, indent=4)
-
-    with open('.\json\\embeddings\\item_categories.json', 'w') as item_categories_file:
-        json.dump(item_categories, item_categories_file, indent=4)
-
-    with open('.\json\\embeddings\\embeddings.npy', 'wb') as embeddings_file:
+    write_json('../preprocessing/json/embeddings/item_ids.json', item_ids)
+    write_json('../preprocessing/json/embeddings/item_categories.json', item_categories)
+    with open('../preprocessing/json/embeddings/embeddings.npy', 'wb') as embeddings_file:
         np.save(embeddings_file, embeddings)
 
 
@@ -53,10 +71,8 @@ def get_most_different_item(item, items_ids, item_categories, embeddings):
 
 
 def get_embeddings():
-    with open('..\preprocessing\json\\embeddings\\item_ids.json', 'r') as item_ids_file:
-        item_ids = json.load(item_ids_file)
-    with open('..\preprocessing\json\\embeddings\\item_categories.json', 'r') as item_categories_file:
-        item_categories = json.load(item_categories_file)
-    with open('..\preprocessing\json\\embeddings\\embeddings.npy', 'rb') as embeddings_file:
+    item_ids = read_json('../preprocessing/json/embeddings/item_ids.json')
+    item_categories = read_json('../preprocessing/json/embeddings/item_categories.json')
+    with open('../preprocessing/json/embeddings/embeddings.npy', 'rb') as embeddings_file:
         embeddings = np.load(embeddings_file)
     return item_ids, item_categories, embeddings

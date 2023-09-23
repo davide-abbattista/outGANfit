@@ -69,9 +69,9 @@ class Discriminator(nn.Module):
 
         # encoder model
         self.e1 = Encoder(self.depth_in, 16, batchnorm=False)  # 16x64x64 (from 3x128x128 or 6x128x128)
-        self.e2 = Encoder(16, 32, batchnorm=False)  # 32x32x32
-        self.e3 = Encoder(32, 64, batchnorm=False)  # 64x16x16
-        self.e4 = Encoder(64, 128, batchnorm=False)  # 128x32x32
+        self.e2 = Encoder(16, 32)  # 32x32x32
+        self.e3 = Encoder(32, 64)  # 64x16x16
+        self.e4 = Encoder(64, 128)  # 128x32x32
 
         # output
         self.c = nn.Conv2d(128, 1, 2, 1, 0, bias=False)  # 1x1x1
