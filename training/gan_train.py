@@ -9,13 +9,15 @@ from architecture.gan_with_embeddings import Discriminator as Discriminator_AE
 from architecture.gan_with_embeddings import Generator as Generator_AE
 from architecture.gan_without_embeddings import Discriminator as Discriminator_no_AE
 from architecture.gan_without_embeddings import Generator as Generator_no_AE
+from architecture.ae import AutoEncoder
 from utility.utils import read_json, gan_weights_init
 from utility.custom_image_dataset import CustomImageDatasetGAN
 from utility.fid import FID
 
 
 class GenerativeAdversarialNetworkTrainer:
-    def __init__(self, train_set_path, validation_set_path, test_set_path, autoencoder=True, images_dir='../images'):
+    def __init__(self, train_set_path, validation_set_path, test_set_path, autoencoder=True, images_dir='../images',
+                 autoencoder_checkpoint_path='../checkpoints/trained_ae_512.pth'):
         self.validation_fids = None
         self.train_fids = None
         self.test_fid = None
@@ -31,6 +33,7 @@ class GenerativeAdversarialNetworkTrainer:
         self.compatibility_discriminator = None
         self.real_fake_discriminator = None
         self.generator = None
+        self.ae = None
         self.device = None
         self.testloader = None
         self.validationloader = None
@@ -38,17 +41,18 @@ class GenerativeAdversarialNetworkTrainer:
 
         self.autoencoder = autoencoder
 
-        self.setup(train_set_path, validation_set_path, test_set_path, images_dir)
+        self.setup(train_set_path, validation_set_path, test_set_path, images_dir, autoencoder_checkpoint_path)
 
-    def setup(self, train_set_path, validation_set_path, test_set_path, images_dir):
+    def setup(self, train_set_path, validation_set_path, test_set_path, images_dir, autoencoder_checkpoint_path):
         train_set = read_json(train_set_path)
         validation_set = read_json(validation_set_path)
         test_set = read_json(test_set_path)
 
         transform = transforms.Compose([transforms.Resize(128),
-                                        transforms.Normalize([127.5, 127.5, 127.5], [127.5, 127.5, 127.5]),
-                                        # range [-1, 1]
-                                        # transforms.Normalize([0, 0, 0], [255, 255, 255])  # map values in the range [0, 1]
+                                        # map values in the range [-1, 1]
+                                        transforms.Normalize([127.5, 127.5, 127.5], [127.5, 127.5, 127.5])
+                                        # # map values in the range [0, 1]
+                                        # transforms.Normalize([0, 0, 0], [255, 255, 255])
                                         ])
 
         trainset = CustomImageDatasetGAN(img_dir=images_dir, data=train_set, transform=transform)
@@ -66,6 +70,10 @@ class GenerativeAdversarialNetworkTrainer:
             self.generator = Generator_AE().to(self.device)
             self.real_fake_discriminator = Discriminator_AE(depth_in=3).to(self.device)
             self.compatibility_discriminator = Discriminator_AE(depth_in=6).to(self.device)
+            self.ae = AutoEncoder().to(self.device)
+            checkpoint = torch.load(autoencoder_checkpoint_path, map_location=torch.device('cpu'))
+            self.ae.load_state_dict(checkpoint)
+            self.ae.eval()
         else:
             self.generator = Generator_no_AE().to(self.device)
             self.real_fake_discriminator = Discriminator_no_AE(depth_in=3).to(self.device)
@@ -115,10 +123,20 @@ class GenerativeAdversarialNetworkTrainer:
                 self.compatibility_discriminator.train()
                 self.real_fake_discriminator.train()
 
-                d_rf_loss = self.real_fake_discriminator_train_step(cond_images, real_images, batch_size)
-                d_c_loss = self.compatibility_discriminator_train_step(cond_images, real_images, not_compatible_images,
-                                                                       batch_size)
-                g_loss = self.generator_train_step(cond_images, batch_size)
+                if self.autoencoder:
+                    _, cond_images_embeddings = self.ae(cond_images)
+                    d_rf_loss = self.real_fake_discriminator_train_step(cond_images, real_images, batch_size,
+                                                                        cond_images_embeddings)
+                    d_c_loss = self.compatibility_discriminator_train_step(cond_images, real_images,
+                                                                           not_compatible_images, batch_size,
+                                                                           cond_images_embeddings)
+                    g_loss = self.generator_train_step(cond_images, batch_size, cond_images_embeddings)
+                else:
+                    d_rf_loss = self.real_fake_discriminator_train_step(cond_images, real_images, batch_size)
+                    d_c_loss = self.compatibility_discriminator_train_step(cond_images, real_images,
+                                                                           not_compatible_images,
+                                                                           batch_size)
+                    g_loss = self.generator_train_step(cond_images, batch_size)
 
                 # update training losses
                 train_d_rf_loss += d_rf_loss * batch_size
@@ -157,7 +175,12 @@ class GenerativeAdversarialNetworkTrainer:
                     real_images = images[1].to(self.device)
                     # calculate the batch fid and update validation fid
                     batch_size = real_images.size(0)
-                    validation_fid += self.fid.calculate_fid(real_images, self.generator(cond_images)) * batch_size
+                    if self.autoencoder:
+                        _, cond_images_embeddings = self.ae(cond_images)
+                        validation_fid += self.fid.calculate_fid(real_images,
+                                                                 self.generator(cond_images_embeddings)) * batch_size
+                    else:
+                        validation_fid += self.fid.calculate_fid(real_images, self.generator(cond_images)) * batch_size
 
                 # calculate average validation fid
                 validation_fid = validation_fid / len(self.validationloader.dataset)
@@ -201,7 +224,12 @@ class GenerativeAdversarialNetworkTrainer:
                 real_images = images[1].to(self.device)
                 # update test fid
                 batch_size = real_images.size(0)
-                self.test_fid += self.fid.calculate_fid(real_images, self.generator(cond_images)) * batch_size
+                if self.autoencoder:
+                    _, cond_images_embeddings = self.ae(cond_images)
+                    self.test_fid += self.fid.calculate_fid(real_images,
+                                                            self.generator(cond_images_embeddings)) * batch_size
+                else:
+                    self.test_fid += self.fid.calculate_fid(real_images, self.generator(cond_images)) * batch_size
 
             # calculate average test fid
             test_fid = self.test_fid / len(self.testloader.dataset)
@@ -209,11 +237,14 @@ class GenerativeAdversarialNetworkTrainer:
 
         return self.best_generator, self.train_fids, self.validation_fids, self.test_fid
 
-    def generator_train_step(self, cond_images, batch_size):
+    def generator_train_step(self, cond_images, batch_size, cond_images_embeddings=None):
         # clear the gradients of all optimized variables
         self.g_optimizer.zero_grad()
 
-        fake_images = self.generator(cond_images)
+        if self.autoencoder:
+            fake_images = self.generator(cond_images_embeddings)
+        else:
+            fake_images = self.generator(cond_images)
 
         # calculate the batch loss with respect to the real-fake discriminator
         validity = self.real_fake_discriminator(fake_images)
@@ -234,7 +265,8 @@ class GenerativeAdversarialNetworkTrainer:
         self.g_optimizer.step()
         return g_loss.data.item()
 
-    def compatibility_discriminator_train_step(self, cond_images, real_images, not_compatible_images, batch_size):
+    def compatibility_discriminator_train_step(self, cond_images, real_images, not_compatible_images, batch_size,
+                                               cond_images_embeddings=None):
         # clear the gradients of all optimized variables
         self.d_c_optimizer.zero_grad()
 
@@ -244,7 +276,10 @@ class GenerativeAdversarialNetworkTrainer:
         # compatibility_loss.backward()
 
         # calculate the batch loss with fake images
-        fake_images = self.generator(cond_images)
+        if self.autoencoder:
+            fake_images = self.generator(cond_images_embeddings)
+        else:
+            fake_images = self.generator(cond_images)
         fake_validity = self.compatibility_discriminator(fake_images, cond_images)
         fake_compatibility_loss = self.criterion(fake_validity, torch.zeros(batch_size, 1).to(self.device))
         # fake_compatibility_loss.backward()
@@ -262,7 +297,7 @@ class GenerativeAdversarialNetworkTrainer:
         self.d_c_optimizer.step()
         return d_loss.data.item()
 
-    def real_fake_discriminator_train_step(self, cond_images, real_images, batch_size):
+    def real_fake_discriminator_train_step(self, cond_images, real_images, batch_size, cond_images_embeddings=None):
         # clear the gradients of all optimized variables
         self.d_rf_optimizer.zero_grad()
 
@@ -272,7 +307,10 @@ class GenerativeAdversarialNetworkTrainer:
         # real_loss.backward()
 
         # calculate the batch loss with fake images
-        fake_images = self.generator(cond_images)
+        if self.autoencoder:
+            fake_images = self.generator(cond_images_embeddings)
+        else:
+            fake_images = self.generator(cond_images)
         fake_validity = self.real_fake_discriminator(fake_images)
         fake_loss = self.criterion(fake_validity, torch.zeros(batch_size, 1).to(self.device))
         # fake_loss.backward()

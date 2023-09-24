@@ -15,11 +15,13 @@ def gan_weights_init(m):
 def ae_weights_init(m):
     classname = m.__class__.__name__
     if classname.find('Conv') != -1:
-        nn.init.xavier_uniform_(m.weight)
-        m.bias.data.fill_(0.01)
+        nn.init.xavier_uniform_(m.weight.data)
+        if m.bias is not None:
+            m.bias.data.fill_(0.01)
     elif classname.find('Linear') != -1:
         nn.init.xavier_uniform_(m.weight)
-        m.bias.data.fill_(0.01)
+        if m.bias is not None:
+            m.bias.data.fill_(0.01)
 
 
 def read_json(path):

@@ -35,6 +35,7 @@ class AutoencoderTrainer:
         test_set = read_json(test_set_path)
 
         train_transform = transforms.Compose([
+            # map values in the range [0, 1]
             transforms.Normalize([0, 0, 0], [255, 255, 255]),
             transforms.RandomCrop(size=128, pad_if_needed=True),
             transforms.RandomHorizontalFlip(),
@@ -43,6 +44,7 @@ class AutoencoderTrainer:
         ])
 
         val_test_transform = transforms.Compose([
+            # map values in the range [0, 1]
             transforms.Normalize([0, 0, 0], [255, 255, 255]),
             transforms.Resize(128),
             # transforms.ToTensor()
@@ -89,7 +91,7 @@ class AutoencoderTrainer:
                 # clear the gradients of all optimized variables
                 self.optimizer.zero_grad()
                 # forward pass: compute predicted outputs by passing inputs to the model
-                output = self.ae(images)
+                output, _ = self.ae(images)
                 # calculate the batch loss
                 loss = self.criterion(images, output)
                 # backward pass: compute gradient of the loss with respect to model parameters
@@ -114,7 +116,7 @@ class AutoencoderTrainer:
                     # move tensors to GPU if CUDA is available
                     images = images.to(self.device)
                     # forward pass: compute predicted outputs by passing inputs to the model
-                    output = self.ae(images)
+                    output, _ = self.ae(images)
                     # calculate the batch loss
                     loss = self.criterion(images, output)
                     # update average validation loss
@@ -156,7 +158,7 @@ class AutoencoderTrainer:
                 # move tensors to GPU if CUDA is available
                 images = images.to(self.device)
                 # forward pass: compute predicted outputs by passing inputs to the model
-                output = ae(images)
+                output, _ = ae(images)
                 # calculate the batch loss
                 loss = self.criterion(images, output)
                 # update test loss
