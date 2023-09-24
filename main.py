@@ -1,9 +1,9 @@
-from preprocessing.preprocessing import Preprocessing
+from preprocessing.preprocessing import Preprocesser
 from training.gan_train import GenerativeAdversarialNetworkTrainer
 
 autoencoder = False
 
-preprocessing = Preprocessing(macrocategories=False, autoencoder=autoencoder, not_compatible_items_metric='FID')
+preprocessing = Preprocesser(macrocategories=False, autoencoder=autoencoder, not_compatible_items_metric='FID')
 preprocessing.preprocess()
 
 accessories_gan_trainer = GenerativeAdversarialNetworkTrainer(train_set_path=
