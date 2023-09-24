@@ -9,7 +9,7 @@ from architecture.gan_with_embeddings import Discriminator as Discriminator_AE
 from architecture.gan_with_embeddings import Generator as Generator_AE
 from architecture.gan_without_embeddings import Discriminator as Discriminator_no_AE
 from architecture.gan_without_embeddings import Generator as Generator_no_AE
-from utility.utils import read_json, weights_init
+from utility.utils import read_json, gan_weights_init
 from utility.custom_image_dataset import CustomImageDatasetGAN
 from utility.fid import FID
 
@@ -71,9 +71,9 @@ class GenerativeAdversarialNetworkTrainer:
             self.real_fake_discriminator = Discriminator_no_AE(depth_in=3).to(self.device)
             self.compatibility_discriminator = Discriminator_no_AE(depth_in=6).to(self.device)
 
-        self.generator.apply(weights_init)
-        self.real_fake_discriminator.apply(weights_init)
-        self.compatibility_discriminator.apply(weights_init)
+        self.generator.apply(gan_weights_init)
+        self.real_fake_discriminator.apply(gan_weights_init)
+        self.compatibility_discriminator.apply(gan_weights_init)
 
         self.d_rf_optimizer = torch.optim.Adam(self.real_fake_discriminator.parameters(), lr=2e-4,
                                                betas=(0.5, 0.999))
@@ -82,82 +82,6 @@ class GenerativeAdversarialNetworkTrainer:
         self.g_optimizer = torch.optim.Adam(self.generator.parameters(), lr=2e-4, betas=(0.5, 0.999))
         self.criterion = torch.nn.BCELoss()
         self.fid = FID()
-
-    def generator_train_step(self, cond_images, batch_size):
-        # clear the gradients of all optimized variables
-        self.g_optimizer.zero_grad()
-
-        fake_images = self.generator(cond_images)
-
-        # calculate the batch loss with respect to the real-fake discriminator
-        validity = self.real_fake_discriminator(fake_images)
-        g1_loss = self.criterion(validity, torch.ones(batch_size, 1).to(self.device))
-        # g1_loss.backward(retain_graph=True)
-
-        # calculate the batch loss with respect to the compatibility discriminator
-        compatibility = self.compatibility_discriminator(fake_images, cond_images)
-        g2_loss = self.criterion(compatibility, torch.ones(batch_size, 1).to(self.device))
-        # g2_loss.backward()
-
-        # g_loss = (g1_loss + g2_loss) * 0.5
-        g_loss = g1_loss + g2_loss
-        # backward pass: compute gradient of the loss with respect to model parameters
-        g_loss.backward()
-
-        # perform a single optimization step (parameter update)
-        self.g_optimizer.step()
-        return g_loss.data.item()
-
-    def compatibility_discriminator_train_step(self, cond_images, real_images, not_compatible_images, batch_size):
-        # clear the gradients of all optimized variables
-        self.d_c_optimizer.zero_grad()
-
-        # calculate the batch loss with compatible items
-        real_validity = self.compatibility_discriminator(real_images, cond_images)
-        compatibility_loss = self.criterion(real_validity, torch.ones(batch_size, 1).to(self.device))
-        # compatibility_loss.backward()
-
-        # calculate the batch loss with fake images
-        fake_images = self.generator(cond_images)
-        fake_validity = self.compatibility_discriminator(fake_images, cond_images)
-        fake_compatibility_loss = self.criterion(fake_validity, torch.zeros(batch_size, 1).to(self.device))
-        # fake_compatibility_loss.backward()
-
-        # calculate the batch loss with not compatible items
-        fake_validity = self.compatibility_discriminator(not_compatible_images, cond_images)
-        not_compatibility_loss = self.criterion(fake_validity, torch.zeros(batch_size, 1).to(self.device))
-        # not_compatibility_loss.backward()
-
-        d_loss = compatibility_loss + fake_compatibility_loss + not_compatibility_loss
-        # backward pass: compute gradient of the loss with respect to model parameters
-        d_loss.backward()
-
-        # perform a single optimization step (parameter update)
-        self.d_c_optimizer.step()
-        return d_loss.data.item()
-
-    def real_fake_discriminator_train_step(self, cond_images, real_images, batch_size):
-        # clear the gradients of all optimized variables
-        self.d_rf_optimizer.zero_grad()
-
-        # calculate the batch loss with real images
-        real_validity = self.real_fake_discriminator(real_images)
-        real_loss = self.criterion(real_validity, torch.ones(batch_size, 1).to(self.device))
-        # real_loss.backward()
-
-        # calculate the batch loss with fake images
-        fake_images = self.generator(cond_images)
-        fake_validity = self.real_fake_discriminator(fake_images)
-        fake_loss = self.criterion(fake_validity, torch.zeros(batch_size, 1).to(self.device))
-        # fake_loss.backward()
-
-        d_loss = real_loss + fake_loss
-        # backward pass: compute gradient of the loss with respect to model parameters
-        d_loss.backward()
-
-        # perform a single optimization step (parameter update)
-        self.d_rf_optimizer.step()
-        return d_loss.data.item()
 
     def train_and_test(self, category, num_epochs=300):
         self.best_fid_score = float('inf')  # Initialize with a high value
@@ -255,32 +179,7 @@ class GenerativeAdversarialNetworkTrainer:
                     self.best_generator = deepcopy(self.generator)
 
                 # visually evaluate the generator
-                images = next(iter(self.validationloader))
-                cond_images = images[0].to(self.device)
-                real_images = images[1].to(self.device)
-                generated_images = self.generator(cond_images)
-
-                top = [el.detach().cpu().numpy() for el in cond_images]
-                compatible = [el.detach().cpu().numpy() for el in real_images]
-                generated = [el.detach().cpu().numpy() for el in generated_images]
-
-                fig = plt.figure(figsize=(10, 10))
-                for idx in np.arange(2):
-                    ax1 = fig.add_subplot(3, 3, 3 * idx + 1, xticks=[], yticks=[])
-                    img1 = (top[idx] * 127.5 + 127.5).astype(int)
-                    plt.imshow(np.transpose(img1, (1, 2, 0)))
-                    ax1.set_title(f"Input top")
-
-                    ax2 = fig.add_subplot(3, 3, 3 * idx + 2, xticks=[], yticks=[])
-                    img2 = (compatible[idx] * 127.5 + 127.5).astype(int)
-                    plt.imshow(np.transpose(img2, (1, 2, 0)))
-                    ax2.set_title(f"Real compatible {category}")
-
-                    ax3 = fig.add_subplot(3, 3, 3 * idx + 3, xticks=[], yticks=[])
-                    img3 = (generated[idx] * 127.5 + 127.5).astype(int)
-                    plt.imshow(np.transpose(img3, (1, 2, 0)))
-                    ax3.set_title(f"Generated {category}")
-                plt.show()
+                self.visually_evaluation(category)
 
             plt.plot(self.train_fids, label='Training loss')
             plt.plot(self.validation_fids, label='Validation loss')
@@ -309,3 +208,107 @@ class GenerativeAdversarialNetworkTrainer:
             print('\n Test Loss: {:.6f}'.format(test_fid))
 
         return self.best_generator, self.train_fids, self.validation_fids, self.test_fid
+
+    def generator_train_step(self, cond_images, batch_size):
+        # clear the gradients of all optimized variables
+        self.g_optimizer.zero_grad()
+
+        fake_images = self.generator(cond_images)
+
+        # calculate the batch loss with respect to the real-fake discriminator
+        validity = self.real_fake_discriminator(fake_images)
+        g1_loss = self.criterion(validity, torch.ones(batch_size, 1).to(self.device))
+        # g1_loss.backward(retain_graph=True)
+
+        # calculate the batch loss with respect to the compatibility discriminator
+        compatibility = self.compatibility_discriminator(fake_images, cond_images)
+        g2_loss = self.criterion(compatibility, torch.ones(batch_size, 1).to(self.device))
+        # g2_loss.backward()
+
+        # g_loss = (g1_loss + g2_loss) * 0.5
+        g_loss = g1_loss + g2_loss
+        # backward pass: compute gradient of the loss with respect to model parameters
+        g_loss.backward()
+
+        # perform a single optimization step (parameter update)
+        self.g_optimizer.step()
+        return g_loss.data.item()
+
+    def compatibility_discriminator_train_step(self, cond_images, real_images, not_compatible_images, batch_size):
+        # clear the gradients of all optimized variables
+        self.d_c_optimizer.zero_grad()
+
+        # calculate the batch loss with compatible items
+        real_validity = self.compatibility_discriminator(real_images, cond_images)
+        compatibility_loss = self.criterion(real_validity, torch.ones(batch_size, 1).to(self.device))
+        # compatibility_loss.backward()
+
+        # calculate the batch loss with fake images
+        fake_images = self.generator(cond_images)
+        fake_validity = self.compatibility_discriminator(fake_images, cond_images)
+        fake_compatibility_loss = self.criterion(fake_validity, torch.zeros(batch_size, 1).to(self.device))
+        # fake_compatibility_loss.backward()
+
+        # calculate the batch loss with not compatible items
+        fake_validity = self.compatibility_discriminator(not_compatible_images, cond_images)
+        not_compatibility_loss = self.criterion(fake_validity, torch.zeros(batch_size, 1).to(self.device))
+        # not_compatibility_loss.backward()
+
+        d_loss = compatibility_loss + fake_compatibility_loss + not_compatibility_loss
+        # backward pass: compute gradient of the loss with respect to model parameters
+        d_loss.backward()
+
+        # perform a single optimization step (parameter update)
+        self.d_c_optimizer.step()
+        return d_loss.data.item()
+
+    def real_fake_discriminator_train_step(self, cond_images, real_images, batch_size):
+        # clear the gradients of all optimized variables
+        self.d_rf_optimizer.zero_grad()
+
+        # calculate the batch loss with real images
+        real_validity = self.real_fake_discriminator(real_images)
+        real_loss = self.criterion(real_validity, torch.ones(batch_size, 1).to(self.device))
+        # real_loss.backward()
+
+        # calculate the batch loss with fake images
+        fake_images = self.generator(cond_images)
+        fake_validity = self.real_fake_discriminator(fake_images)
+        fake_loss = self.criterion(fake_validity, torch.zeros(batch_size, 1).to(self.device))
+        # fake_loss.backward()
+
+        d_loss = real_loss + fake_loss
+        # backward pass: compute gradient of the loss with respect to model parameters
+        d_loss.backward()
+
+        # perform a single optimization step (parameter update)
+        self.d_rf_optimizer.step()
+        return d_loss.data.item()
+
+    def visually_evaluation(self, category):
+        images = next(iter(self.validationloader))
+        cond_images = images[0].to(self.device)
+        real_images = images[1].to(self.device)
+        generated_images = self.generator(cond_images)
+
+        top = [el.detach().cpu().numpy() for el in cond_images]
+        compatible = [el.detach().cpu().numpy() for el in real_images]
+        generated = [el.detach().cpu().numpy() for el in generated_images]
+
+        fig = plt.figure(figsize=(10, 10))
+        for idx in np.arange(2):
+            ax1 = fig.add_subplot(3, 3, 3 * idx + 1, xticks=[], yticks=[])
+            img1 = (top[idx] * 127.5 + 127.5).astype(int)
+            plt.imshow(np.transpose(img1, (1, 2, 0)))
+            ax1.set_title(f"Input top")
+
+            ax2 = fig.add_subplot(3, 3, 3 * idx + 2, xticks=[], yticks=[])
+            img2 = (compatible[idx] * 127.5 + 127.5).astype(int)
+            plt.imshow(np.transpose(img2, (1, 2, 0)))
+            ax2.set_title(f"Real compatible {category}")
+
+            ax3 = fig.add_subplot(3, 3, 3 * idx + 3, xticks=[], yticks=[])
+            img3 = (generated[idx] * 127.5 + 127.5).astype(int)
+            plt.imshow(np.transpose(img3, (1, 2, 0)))
+            ax3.set_title(f"Generated {category}")
+        plt.show()

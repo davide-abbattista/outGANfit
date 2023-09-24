@@ -1,14 +1,13 @@
 from copy import deepcopy
 from torch.optim import Adam
 from torchvision import transforms
-import numpy as np
 import torch
 import matplotlib.pyplot as plt
 
 from utility.custom_image_dataset import CustomImageDatasetAE
 from architecture.ae import SSIM_Loss
 from architecture.ae import AutoEncoder
-from utility.utils import read_json
+from utility.utils import read_json, ae_weights_init
 
 
 class AutoencoderTrainer:
@@ -61,8 +60,10 @@ class AutoencoderTrainer:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         self.ae = AutoEncoder().to(self.device)
+        self.ae.apply(ae_weights_init)
         self.criterion = SSIM_Loss()
-        self.optimizer = Adam(self.ae.parameters(), lr=1e-4, weight_decay=1e-5)
+        self.optimizer = Adam(self.ae.parameters(), lr=1e-3)
+        # self.optimizer = Adam(self.ae.parameters(), lr=1e-4, weight_decay=1e-5)
         # self.optimizer = Adam(ae.parameters(), lr=1e-4, weight_decay=1e-5, eps=1e-4)
 
     def train_and_test(self, n_epochs=30):
