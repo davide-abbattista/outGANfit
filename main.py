@@ -3,7 +3,7 @@ from training.gan_train import GenerativeAdversarialNetworkTrainer
 
 autoencoder = False
 
-preprocessing = Preprocessing(macrocategories=False, autoencoder=autoencoder, not_compatible_items_metric='random')
+preprocessing = Preprocessing(macrocategories=False, autoencoder=autoencoder, not_compatible_items_metric='FID')
 preprocessing.preprocess()
 
 accessories_gan_trainer = GenerativeAdversarialNetworkTrainer(train_set_path=
@@ -29,6 +29,7 @@ shoes_gan_trainer = GenerativeAdversarialNetworkTrainer(train_set_path=
                                                         '../preprocessing/json/filtered/gan_test_set_ts.json',
                                                         autoencoder=autoencoder)
 
-accessories_gan_trainer.train('accessory')
-bottoms_gan_trainer.train('bottom')
-shoes_gan_trainer.train('shoes')
+accessories_generator, ag_train_fids, ag_validation_fids, ag_test_fid = \
+    accessories_gan_trainer.train_and_test('accessory')
+bottoms_generator, bg_train_fids, bg_validation_fids, bg_test_fid = bottoms_gan_trainer.train_and_test('bottom')
+shoes_generator, sg_train_fids, sg_validation_fids, sg_test_fid = shoes_gan_trainer.train_and_test('shoes')

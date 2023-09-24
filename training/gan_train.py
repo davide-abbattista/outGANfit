@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 import numpy as np
 import torch
 from matplotlib import pyplot as plt
@@ -14,6 +16,13 @@ from utility.fid import FID
 
 class GenerativeAdversarialNetworkTrainer:
     def __init__(self, train_set_path, validation_set_path, test_set_path, autoencoder=True, images_dir='../images'):
+        self.validation_fids = None
+        self.train_fids = None
+        self.test_fid = None
+        self.best_generator = None
+        self.best_epoch = None
+        self.best_fid_score = None
+
         self.fid = None
         self.criterion = None
         self.g_optimizer = None
@@ -26,7 +35,9 @@ class GenerativeAdversarialNetworkTrainer:
         self.testloader = None
         self.validationloader = None
         self.trainloader = None
+
         self.autoencoder = autoencoder
+
         self.setup(train_set_path, validation_set_path, test_set_path, images_dir)
 
     def setup(self, train_set_path, validation_set_path, test_set_path, images_dir):
@@ -73,85 +84,103 @@ class GenerativeAdversarialNetworkTrainer:
         self.fid = FID()
 
     def generator_train_step(self, cond_images, batch_size):
+        # clear the gradients of all optimized variables
         self.g_optimizer.zero_grad()
 
         fake_images = self.generator(cond_images)
 
+        # calculate the batch loss with respect to the real-fake discriminator
         validity = self.real_fake_discriminator(fake_images)
         g1_loss = self.criterion(validity, torch.ones(batch_size, 1).to(self.device))
         # g1_loss.backward(retain_graph=True)
 
+        # calculate the batch loss with respect to the compatibility discriminator
         compatibility = self.compatibility_discriminator(fake_images, cond_images)
         g2_loss = self.criterion(compatibility, torch.ones(batch_size, 1).to(self.device))
         # g2_loss.backward()
 
         # g_loss = (g1_loss + g2_loss) * 0.5
         g_loss = g1_loss + g2_loss
+        # backward pass: compute gradient of the loss with respect to model parameters
         g_loss.backward()
 
+        # perform a single optimization step (parameter update)
         self.g_optimizer.step()
         return g_loss.data.item()
 
     def compatibility_discriminator_train_step(self, cond_images, real_images, not_compatible_images, batch_size):
+        # clear the gradients of all optimized variables
         self.d_c_optimizer.zero_grad()
 
-        # train with compatible items
+        # calculate the batch loss with compatible items
         real_validity = self.compatibility_discriminator(real_images, cond_images)
         compatibility_loss = self.criterion(real_validity, torch.ones(batch_size, 1).to(self.device))
         # compatibility_loss.backward()
 
-        # train with fake images
+        # calculate the batch loss with fake images
         fake_images = self.generator(cond_images)
         fake_validity = self.compatibility_discriminator(fake_images, cond_images)
         fake_compatibility_loss = self.criterion(fake_validity, torch.zeros(batch_size, 1).to(self.device))
         # fake_compatibility_loss.backward()
 
-        # train with not compatible items
+        # calculate the batch loss with not compatible items
         fake_validity = self.compatibility_discriminator(not_compatible_images, cond_images)
         not_compatibility_loss = self.criterion(fake_validity, torch.zeros(batch_size, 1).to(self.device))
         # not_compatibility_loss.backward()
 
         d_loss = compatibility_loss + fake_compatibility_loss + not_compatibility_loss
+        # backward pass: compute gradient of the loss with respect to model parameters
         d_loss.backward()
 
+        # perform a single optimization step (parameter update)
         self.d_c_optimizer.step()
         return d_loss.data.item()
 
     def real_fake_discriminator_train_step(self, cond_images, real_images, batch_size):
+        # clear the gradients of all optimized variables
         self.d_rf_optimizer.zero_grad()
 
-        # train with real images
+        # calculate the batch loss with real images
         real_validity = self.real_fake_discriminator(real_images)
         real_loss = self.criterion(real_validity, torch.ones(batch_size, 1).to(self.device))
         # real_loss.backward()
 
-        # train with fake images
+        # calculate the batch loss with fake images
         fake_images = self.generator(cond_images)
         fake_validity = self.real_fake_discriminator(fake_images)
         fake_loss = self.criterion(fake_validity, torch.zeros(batch_size, 1).to(self.device))
         # fake_loss.backward()
 
         d_loss = real_loss + fake_loss
+        # backward pass: compute gradient of the loss with respect to model parameters
         d_loss.backward()
 
+        # perform a single optimization step (parameter update)
         self.d_rf_optimizer.step()
         return d_loss.data.item()
 
-    def train(self, category, num_epochs=300):
-        best_fid_score = float('inf')  # Initialize with a high value
-        best_epoch = 0
+    def train_and_test(self, category, num_epochs=300):
+        self.best_fid_score = float('inf')  # Initialize with a high value
+        self.best_epoch = 0
+        self.best_generator = deepcopy(self.generator)
 
-        train_fids = []
-        validation_fids = []
+        self.train_fids, self.validation_fids = [], []
 
         for epoch in range(1, num_epochs + 1):
             print('\nStarting epoch {}...'.format(epoch))
+            # keep track of training losses and train and validation fid
             train_d_rf_loss = 0.0
             train_d_c_loss = 0.0
             train_g_loss = 0.0
-            train_fid = 0.0
 
+            train_fid = 0.0
+            validation_fid = 0.0
+
+            ###################
+            # train the model #
+            ###################
             for images, _ in self.trainloader:
+                # move tensors to GPU if CUDA is available
                 cond_images = images[0].to(self.device)
                 real_images = images[1].to(self.device)
                 not_compatible_images = images[2].to(self.device)
@@ -167,76 +196,116 @@ class GenerativeAdversarialNetworkTrainer:
                                                                        batch_size)
                 g_loss = self.generator_train_step(cond_images, batch_size)
 
+                # update training losses
                 train_d_rf_loss += d_rf_loss * batch_size
                 train_d_c_loss += d_c_loss * batch_size
                 train_g_loss = g_loss * batch_size
 
+                # calculate the batch fid and update the train fid
+                torch.cuda.empty_cache()
                 self.generator.eval()
-                train_fid += self.fid.calculate_fid(real_images, self.generator(cond_images)) * batch_size
+                with torch.no_grad():
+                    train_fid += self.fid.calculate_fid(real_images, self.generator(cond_images)) * batch_size
 
+            # calculate average train losses
             train_d_rf_loss = train_d_rf_loss / len(self.trainloader.dataset)
             train_d_c_loss = train_d_c_loss / len(self.trainloader.dataset)
             train_g_loss = train_g_loss / len(self.trainloader.dataset)
-
+            # calculate average train fid
             train_fid = train_fid / len(self.trainloader.dataset)
-            train_fids.append(train_fid)
+            self.train_fids.append(train_fid)
 
-            print(f'{category} train losses')
+            # print training losses
+            print('Train losses:')
+            print('Generator loss: {:.6f} \tReal-Fake Discriminator loss: {:.6f} \t Compatibility Discriminator '
+                  'loss: {:.6f}'.format(train_g_loss, train_d_rf_loss, train_d_c_loss))
             print('g_loss: {}, d_rf_loss: {}, d_c_loss: {}'.format(train_g_loss, train_d_rf_loss, train_d_c_loss))
-            print('FID Score: {}'.format(train_fid))
 
-            # EVALUATION
-
+            ######################
+            # validate the model #
+            ######################
+            torch.cuda.empty_cache()
             self.generator.eval()
-            validation_fid = 0.0
+            with torch.no_grad():
+                for images, _ in self.validationloader:
+                    # move tensors to GPU if CUDA is available
+                    cond_images = images[0].to(self.device)
+                    real_images = images[1].to(self.device)
+                    # calculate the batch fid and update validation fid
+                    batch_size = real_images.size(0)
+                    validation_fid += self.fid.calculate_fid(real_images, self.generator(cond_images)) * batch_size
 
-            for images, _ in self.validationloader:
+                # calculate average validation fid
+                validation_fid = validation_fid / len(self.validationloader.dataset)
+                self.validation_fids.append(validation_fid)
+
+                # print training/validation fids
+                print('Train/Validation FIDs:')
+                print('Training FID: {:.6f} \tValidation FID: {:.6f}'.format(
+                    train_fid, validation_fid))
+
+                # save model if validation fid has decreased
+                if validation_fid <= self.best_fid_score:
+                    self.best_epoch = epoch
+                    print('\nValidation FID decreased ({:.6f} --> {:.6f}).  Saving model ...'.format(
+                        self.best_fid_score,
+                        validation_fid))
+                    torch.save(self.generator.state_dict(), f'trained_{category}_generator.pth')
+                    self.best_fid_score = validation_fid
+                    self.best_generator = deepcopy(self.generator)
+
+                # visually evaluate the generator
+                images = next(iter(self.validationloader))
                 cond_images = images[0].to(self.device)
                 real_images = images[1].to(self.device)
+                generated_images = self.generator(cond_images)
 
+                top = [el.detach().cpu().numpy() for el in cond_images]
+                compatible = [el.detach().cpu().numpy() for el in real_images]
+                generated = [el.detach().cpu().numpy() for el in generated_images]
+
+                fig = plt.figure(figsize=(10, 10))
+                for idx in np.arange(2):
+                    ax1 = fig.add_subplot(3, 3, 3 * idx + 1, xticks=[], yticks=[])
+                    img1 = (top[idx] * 127.5 + 127.5).astype(int)
+                    plt.imshow(np.transpose(img1, (1, 2, 0)))
+                    ax1.set_title(f"Input top")
+
+                    ax2 = fig.add_subplot(3, 3, 3 * idx + 2, xticks=[], yticks=[])
+                    img2 = (compatible[idx] * 127.5 + 127.5).astype(int)
+                    plt.imshow(np.transpose(img2, (1, 2, 0)))
+                    ax2.set_title(f"Real compatible {category}")
+
+                    ax3 = fig.add_subplot(3, 3, 3 * idx + 3, xticks=[], yticks=[])
+                    img3 = (generated[idx] * 127.5 + 127.5).astype(int)
+                    plt.imshow(np.transpose(img3, (1, 2, 0)))
+                    ax3.set_title(f"Generated {category}")
+                plt.show()
+
+            plt.plot(self.train_fids, label='Training loss')
+            plt.plot(self.validation_fids, label='Validation loss')
+            plt.legend(frameon=False)
+
+            print('\nBest epoch: ', self.best_epoch)
+            print('Best FID: ', self.best_fid_score)
+
+        # track test fid
+        self.test_fid = 0.0
+        generator = self.best_generator
+        torch.cuda.empty_cache()
+        generator.eval()
+        with torch.no_grad():
+            # iterate over test data
+            for images, _ in self.testloader:
+                # move tensors to GPU if CUDA is available
+                cond_images = images[0].to(self.device)
+                real_images = images[1].to(self.device)
+                # update test fid
                 batch_size = real_images.size(0)
+                self.test_fid += self.fid.calculate_fid(real_images, self.generator(cond_images)) * batch_size
 
-                validation_fid += self.fid.calculate_fid(real_images, self.generator(cond_images)) * batch_size
+            # calculate average test fid
+            test_fid = self.test_fid / len(self.testloader.dataset)
+            print('\n Test Loss: {:.6f}'.format(test_fid))
 
-            validation_fid = validation_fid / len(self.validationloader.dataset)
-            validation_fids.append(validation_fid)
-
-            print(f'{category} validation loss')
-            print('FID Score: {}'.format(validation_fid))
-            if validation_fid < best_fid_score:
-                best_epoch = epoch
-                print('Validation FID decreased ({:.6f} --> {:.6f}).  Saving model ...'.format(
-                    best_fid_score,
-                    validation_fid))
-                best_fid_score = validation_fid
-                torch.save(self.generator.state_dict(), f'{category}_generator.pth')
-
-            images = next(iter(self.validationloader))
-            cond_images = images[0].to(self.device)
-            real_images = images[1].to(self.device)
-            generated_images = self.generator(cond_images)
-
-            top = [el.detach().cpu().numpy() for el in cond_images]
-            compatible = [el.detach().cpu().numpy() for el in real_images]
-            generated = [el.detach().cpu().numpy() for el in generated_images]
-
-            fig = plt.figure(figsize=(10, 10))
-            for idx in np.arange(2):
-                ax1 = fig.add_subplot(3, 3, 3 * idx + 1, xticks=[], yticks=[])
-                img1 = (top[idx] * 127.5 + 127.5).astype(int)
-                plt.imshow(np.transpose(img1, (1, 2, 0)))
-                ax1.set_title(f"Input top epoch {epoch}")
-
-                ax2 = fig.add_subplot(3, 3, 3 * idx + 2, xticks=[], yticks=[])
-                img2 = (compatible[idx] * 127.5 + 127.5).astype(int)
-                plt.imshow(np.transpose(img2, (1, 2, 0)))
-                ax2.set_title(f"Real compatible {category} epoch {epoch}")
-
-                ax3 = fig.add_subplot(3, 3, 3 * idx + 3, xticks=[], yticks=[])
-                img3 = (generated[idx] * 127.5 + 127.5).astype(int)
-                plt.imshow(np.transpose(img3, (1, 2, 0)))
-                ax3.set_title(f"Generated {category} epoch {epoch}")
-            plt.show()
-
-            print('\nBest epoch: ', best_epoch)
-            print('Best FID: ', best_fid_score)
+        return self.best_generator, self.train_fids, self.validation_fids, self.test_fid
