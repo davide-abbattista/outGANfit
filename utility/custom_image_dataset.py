@@ -34,7 +34,7 @@ class CustomImageDatasetGAN(Dataset):
         return len(self.data)
 
     def __getitem__(self, idx):
-        category = [item['category'] for item in self.data[idx] if item['category'] != 'tops'][0]
+        category = [item['category'] for item in self.data[idx]['items'] if item['category'] != 'tops'][0]
         top = [item['item_id'] for item in self.data[idx]['items'] if item['category'] == 'tops'][0]
         compatible_item = [item['item_id'] for item in self.data[idx]['items'] if item['category'] != 'tops'][0]
         not_compatible_item = [item['item_id'] for item in self.data[idx]['not_compatible']][0]
