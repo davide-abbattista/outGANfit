@@ -1,3 +1,4 @@
+import csv
 from copy import deepcopy
 
 import numpy as np
@@ -16,7 +17,8 @@ from utility.fid import FID
 
 
 class GenerativeAdversarialNetworkTrainer:
-    def __init__(self, train_set_path, validation_set_path, test_set_path, autoencoder=True, images_dir='../images',
+    def __init__(self, train_set_path, validation_set_path, test_set_path, category, autoencoder=True,
+                 images_dir='../images',
                  autoencoder_checkpoint_path='../checkpoints/trained_ae_512.pth'):
         self.validation_fids = None
         self.train_fids = None
@@ -40,6 +42,7 @@ class GenerativeAdversarialNetworkTrainer:
         self.trainloader = None
 
         self.autoencoder = autoencoder
+        self.category = category
 
         self.setup(train_set_path, validation_set_path, test_set_path, images_dir, autoencoder_checkpoint_path)
 
@@ -91,7 +94,7 @@ class GenerativeAdversarialNetworkTrainer:
         self.criterion = torch.nn.BCELoss()
         self.fid = FID()
 
-    def train_and_test(self, category, num_epochs=300):
+    def train_and_test(self, num_epochs=300):
         self.best_fid_score = float('inf')  # Initialize with a high value
         self.best_epoch = 0
         self.best_generator = deepcopy(self.generator)
@@ -147,7 +150,12 @@ class GenerativeAdversarialNetworkTrainer:
                 torch.cuda.empty_cache()
                 self.generator.eval()
                 with torch.no_grad():
-                    train_fid += self.fid.calculate_fid(real_images, self.generator(cond_images)) * batch_size
+                    if self.autoencoder:
+                        _, cond_images_embeddings = self.ae(cond_images)
+                        train_fid += self.fid.calculate_fid(real_images,
+                                                            self.generator(cond_images_embeddings)) * batch_size
+                    else:
+                        train_fid += self.fid.calculate_fid(real_images, self.generator(cond_images)) * batch_size
 
             # calculate average train losses
             train_d_rf_loss = train_d_rf_loss / len(self.trainloader.dataset)
@@ -161,7 +169,6 @@ class GenerativeAdversarialNetworkTrainer:
             print('Train losses:')
             print('Generator loss: {:.6f} \tReal-Fake Discriminator loss: {:.6f} \t Compatibility Discriminator '
                   'loss: {:.6f}'.format(train_g_loss, train_d_rf_loss, train_d_c_loss))
-            print('g_loss: {}, d_rf_loss: {}, d_c_loss: {}'.format(train_g_loss, train_d_rf_loss, train_d_c_loss))
 
             ######################
             # validate the model #
@@ -197,16 +204,21 @@ class GenerativeAdversarialNetworkTrainer:
                     print('\nValidation FID decreased ({:.6f} --> {:.6f}).  Saving model ...'.format(
                         self.best_fid_score,
                         validation_fid))
-                    torch.save(self.generator.state_dict(), f'trained_{category}_generator.pth')
+                    torch.save(self.generator.state_dict(), f'trained_{self.category}_generator.pth')
                     self.best_fid_score = validation_fid
                     self.best_generator = deepcopy(self.generator)
+                    self.save_fids(train=True)
+                    self.save_fids(train=False)
 
                 # visually evaluate the generator
-                self.visually_evaluation(category)
+                self.visually_evaluation(self.category)
 
-            plt.plot(self.train_fids, label='Training loss')
-            plt.plot(self.validation_fids, label='Validation loss')
+            plt.plot(self.train_fids, label='Training FID')
+            plt.plot(self.validation_fids, label='Validation FID')
             plt.legend(frameon=False)
+
+            self.save_fids(train=True)
+            self.save_fids(train=False)
 
             print('\nBest epoch: ', self.best_epoch)
             print('Best FID: ', self.best_fid_score)
@@ -324,29 +336,47 @@ class GenerativeAdversarialNetworkTrainer:
         return d_loss.data.item()
 
     def visually_evaluation(self, category):
-        images = next(iter(self.validationloader))
-        cond_images = images[0].to(self.device)
-        real_images = images[1].to(self.device)
-        generated_images = self.generator(cond_images)
+        # images = next(iter(self.validationloader))
+        for images, _ in self.validationloader:
+            cond_images = images[0].to(self.device)
+            real_images = images[1].to(self.device)
+            generated_images = self.generator(cond_images)
 
-        top = [el.detach().cpu().numpy() for el in cond_images]
-        compatible = [el.detach().cpu().numpy() for el in real_images]
-        generated = [el.detach().cpu().numpy() for el in generated_images]
+            top = [el.detach().cpu().numpy() for el in cond_images]
+            compatible = [el.detach().cpu().numpy() for el in real_images]
+            generated = [el.detach().cpu().numpy() for el in generated_images]
 
-        fig = plt.figure(figsize=(10, 10))
-        for idx in np.arange(2):
-            ax1 = fig.add_subplot(3, 3, 3 * idx + 1, xticks=[], yticks=[])
-            img1 = (top[idx] * 127.5 + 127.5).astype(int)
-            plt.imshow(np.transpose(img1, (1, 2, 0)))
-            ax1.set_title(f"Input top")
+            fig = plt.figure(figsize=(10, 10))
+            for idx in np.arange(2):
+                ax1 = fig.add_subplot(3, 3, 3 * idx + 1, xticks=[], yticks=[])
+                img1 = (top[idx] * 127.5 + 127.5).astype(int)
+                plt.imshow(np.transpose(img1, (1, 2, 0)))
+                ax1.set_title(f"Input top")
 
-            ax2 = fig.add_subplot(3, 3, 3 * idx + 2, xticks=[], yticks=[])
-            img2 = (compatible[idx] * 127.5 + 127.5).astype(int)
-            plt.imshow(np.transpose(img2, (1, 2, 0)))
-            ax2.set_title(f"Real compatible {category}")
+                ax2 = fig.add_subplot(3, 3, 3 * idx + 2, xticks=[], yticks=[])
+                img2 = (compatible[idx] * 127.5 + 127.5).astype(int)
+                plt.imshow(np.transpose(img2, (1, 2, 0)))
+                ax2.set_title(f"Real compatible {category}")
 
-            ax3 = fig.add_subplot(3, 3, 3 * idx + 3, xticks=[], yticks=[])
-            img3 = (generated[idx] * 127.5 + 127.5).astype(int)
-            plt.imshow(np.transpose(img3, (1, 2, 0)))
-            ax3.set_title(f"Generated {category}")
-        plt.show()
+                ax3 = fig.add_subplot(3, 3, 3 * idx + 3, xticks=[], yticks=[])
+                img3 = (generated[idx] * 127.5 + 127.5).astype(int)
+                plt.imshow(np.transpose(img3, (1, 2, 0)))
+                ax3.set_title(f"Generated {category}")
+            plt.show()
+            break
+
+    def save_fids(self, train=True):
+        if train:
+            csv_name = f'{self.category}_gan_train_FIDs'
+            fids = self.train_fids
+        else:
+            csv_name = f'{self.category}_gan_validation_FIDs'
+            fids = self.validation_fids
+        with open(f'../checkpoints/{csv_name}', mode='w', newline='') as file_csv:
+            fieldnames = ['Epoch', 'FID']
+            writer = csv.DictWriter(file_csv, fieldnames=fieldnames)
+
+            writer.writeheader()
+
+            for epoch, fid in enumerate(fids, start=1):
+                writer.writerow({'Epoch': epoch, 'FID': fid})
