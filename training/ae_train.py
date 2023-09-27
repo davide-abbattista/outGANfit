@@ -35,19 +35,17 @@ class AutoencoderTrainer:
         test_set = read_json(test_set_path)
 
         train_transform = transforms.Compose([
-            # map values in the range [0, 1]
-            transforms.Normalize([0, 0, 0], [255, 255, 255]),
+            # transforms.Normalize([0, 0, 0], [255, 255, 255]),  # map values in the range [0, 1]
             transforms.RandomCrop(size=128, pad_if_needed=True),
             transforms.RandomHorizontalFlip(),
             transforms.RandomVerticalFlip(),
-            # transforms.ToTensor(),
+            transforms.ToTensor()
         ])
 
         val_test_transform = transforms.Compose([
-            # map values in the range [0, 1]
-            transforms.Normalize([0, 0, 0], [255, 255, 255]),
+            # transforms.Normalize([0, 0, 0], [255, 255, 255]),  # map values in the range [0, 1]
             transforms.Resize(128),
-            # transforms.ToTensor()
+            transforms.ToTensor()
         ])
 
         trainset = CustomImageDatasetAE(img_dir=images_dir, data=train_set, transform=train_transform)

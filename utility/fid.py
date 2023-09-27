@@ -1,6 +1,8 @@
 import numpy as np
 from scipy.linalg import sqrtm
+from torch import nn
 from torchvision.models import inception_v3
+
 from torchvision import transforms
 import torch
 
@@ -13,30 +15,34 @@ class FID:
         self.load_model()
 
     def load_model(self):
-        self.inception_model = torch.hub.load('pytorch/vision:v0.10.0', 'inception_v3', pretrained=True)
+        self.inception_model = inception_v3(pretrained=True, transform_input=False)
+        # del self.inception_model.fc # doesn't work because the forward() method is not changed
+        self.inception_model.fc = nn.Identity()
+        # self.inception_model = torch.nn.Sequential(*(list(model.children())[:-1]))
+
+        # self.inception_model = torch.hub.load('pytorch/vision:v0.10.0', 'inception_v3', pretrained=True, transform_input=False)
+
         self.inception_model = self.inception_model.eval().to(self.device)
 
     def calculate_activation(self, images):
         transform_for_FID = transforms.Compose([transforms.Resize(299),
                                                 transforms.CenterCrop(299),
-                                                transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                                                     std=[0.229, 0.224, 0.225])
+                                                # transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                                #                      std=[0.229, 0.224, 0.225])
                                                 ])
-        if self.range == 255:
-            images = images / 255.0
-        else:
-            images = (images + 1.0) / 2.0  # Rescale images from [-1, 1] to [0, 1]
+        # images = (images + 1.0) / 2.0  # Rescale images from [-1, 1] to [0, 1]
         images = transform_for_FID(images)
 
         images = images.to(self.device)
         # images = images.clone().detach().to(self.device)
         # images = torch.tensor(images).to(self.device)  # Convert images to PyTorch tensors and move to device
 
-        # activations = self.inception_model(images)
         if len(images) == 3:
             images = torch.unsqueeze(images, 0)
 
+        # activations = self.inception_model(images)
         activations = self.inception_model(images).detach().cpu().numpy()
+        # activations = self.inception_model.predict(images).detach().cpu().numpy()
         return activations
 
     def calculate_fid(self, real_images, generated_images):

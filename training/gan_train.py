@@ -52,8 +52,10 @@ class GenerativeAdversarialNetworkTrainer:
         test_set = read_json(test_set_path)
 
         transform = transforms.Compose([transforms.Resize(128),
-                                        # map values in the range [-1, 1]
-                                        transforms.Normalize([127.5, 127.5, 127.5], [127.5, 127.5, 127.5])
+                                        transforms.ToTensor(),
+                                        transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
+                                        # # map values in the range [-1, 1]
+                                        # transforms.Normalize([127.5, 127.5, 127.5], [127.5, 127.5, 127.5])
                                         # # map values in the range [0, 1]
                                         # transforms.Normalize([0, 0, 0], [255, 255, 255])
                                         ])
@@ -380,3 +382,14 @@ class GenerativeAdversarialNetworkTrainer:
 
             for epoch, fid in enumerate(fids, start=1):
                 writer.writerow({'Epoch': epoch, 'FID': fid})
+
+
+accessories_gan_trainer = GenerativeAdversarialNetworkTrainer(train_set_path=
+                                                              '../preprocessing/json/filtered/gan_train_set_ta.json',
+                                                              validation_set_path=
+                                                              '../preprocessing/json/filtered/gan_validation_set_ta'
+                                                              '.json',
+                                                              test_set_path=
+                                                              '../preprocessing/json/filtered/gan_test_set_ta.json',
+                                                              autoencoder=False, category='accessory')
+accessories_generator, ag_train_fids, ag_validation_fids, ag_test_fid = accessories_gan_trainer.train_and_test()

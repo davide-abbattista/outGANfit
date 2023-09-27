@@ -13,8 +13,9 @@ def generate_embeddings(items):
     ae_test_set = read_json('../preprocessing/json/filtered/ae_test_set.json')
 
     transform = transforms.Compose([
-        transforms.Normalize([0, 0, 0], [255, 255, 255]),
+        # transforms.Normalize([0, 0, 0], [255, 255, 255]),
         transforms.Resize(128),
+        transforms.ToTensor()
     ])
 
     dataset = ae_train_set + ae_validation_set + ae_test_set

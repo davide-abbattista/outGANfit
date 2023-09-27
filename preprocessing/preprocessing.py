@@ -196,7 +196,7 @@ class Preprocesser:
                                                 validation_set_path='../preprocessing/json/filtered/ae_validation_set'
                                                                     '.json',
                                                 test_set_path='../preprocessing/json/filtered/ae_test_set.json')
-                ae_trainer.train()
+                ae_trainer.train_and_test()
 
             # Generate the embeddings
             generate_embeddings(filtered_items_json)
