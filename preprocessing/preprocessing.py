@@ -1,7 +1,8 @@
 import random
 import numpy as np
-import torch
-from torchvision.io import read_image
+from PIL import Image
+from torchvision.transforms import transforms
+
 import json
 import csv
 
@@ -153,8 +154,11 @@ def add_not_compatible_items(dataset_json, metric=None, item_ids=None, item_cate
                                 if item['category'] == category:
                                     different_items.append(item)
                     item_id = item['item_id']
-                    item_img = read_image(f'../images/{item_id}.jpg').to(torch.float)
-                    other_images = [read_image(f'../images/{item["item_id"]}.jpg').to(torch.float) for item in
+                    transform = transforms.Compose([transforms.ToTensor(),
+                                                    transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
+                                                    ])
+                    item_img = transform(Image.open(f'../images/{item_id}.jpg'))
+                    other_images = [transform(Image.open(f'../images/{item["item_id"]}.jpg')) for item in
                                     different_items]
                     fid_scores = []
                     for other_img in other_images:
