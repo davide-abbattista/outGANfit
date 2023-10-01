@@ -350,17 +350,17 @@ class GenerativeAdversarialNetworkTrainer:
 
             fig = plt.figure(figsize=(10, 10))
             for idx in np.arange(2):
-                ax1 = fig.add_subplot(3, 3, 3 * idx + 1, xticks=[], yticks=[])
+                ax1 = fig.add_subplot(2, 3, 3 * idx + 1, xticks=[], yticks=[])
                 img1 = (top[idx] * 127.5 + 127.5).astype(int)
                 plt.imshow(np.transpose(img1, (1, 2, 0)))
                 ax1.set_title(f"Input top")
 
-                ax2 = fig.add_subplot(3, 3, 3 * idx + 2, xticks=[], yticks=[])
+                ax2 = fig.add_subplot(2, 3, 3 * idx + 2, xticks=[], yticks=[])
                 img2 = (compatible[idx] * 127.5 + 127.5).astype(int)
                 plt.imshow(np.transpose(img2, (1, 2, 0)))
                 ax2.set_title(f"Real compatible {category}")
 
-                ax3 = fig.add_subplot(3, 3, 3 * idx + 3, xticks=[], yticks=[])
+                ax3 = fig.add_subplot(2, 3, 3 * idx + 3, xticks=[], yticks=[])
                 img3 = (generated[idx] * 127.5 + 127.5).astype(int)
                 plt.imshow(np.transpose(img3, (1, 2, 0)))
                 ax3.set_title(f"Generated {category}")
@@ -382,14 +382,3 @@ class GenerativeAdversarialNetworkTrainer:
 
             for epoch, fid in enumerate(fids, start=1):
                 writer.writerow({'Epoch': epoch, 'FID': fid})
-
-
-accessories_gan_trainer = GenerativeAdversarialNetworkTrainer(train_set_path=
-                                                              '../preprocessing/json/filtered/gan_train_set_ta.json',
-                                                              validation_set_path=
-                                                              '../preprocessing/json/filtered/gan_validation_set_ta'
-                                                              '.json',
-                                                              test_set_path=
-                                                              '../preprocessing/json/filtered/gan_test_set_ta.json',
-                                                              autoencoder=False, category='accessory')
-accessories_generator, ag_train_fids, ag_validation_fids, ag_test_fid = accessories_gan_trainer.train_and_test()

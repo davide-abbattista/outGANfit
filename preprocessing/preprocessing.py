@@ -78,7 +78,7 @@ def compatibility_couples_generator(dataset, filtered_items, outfit_titles=None)
         items = [item for item in outfit['items'] if item['item_id'] in item_ids]
         categories = [filtered_items[item["item_id"]] for item in items]
 
-        # consider the outfit only if it contains items of all the four wanted categories
+        # consider the outfit only if contains a top and at least another item belonging to the other three categories
         if len(set(categories)) >= 2 and 'tops' in categories:
             outfit['items'] = items
             for item in outfit['items']:
@@ -223,19 +223,19 @@ class Preprocesser:
         if self.autoencoder:
             item_ids, item_categories, embeddings = get_embeddings()
             compatible_tops_accessories = add_not_compatible_items(compatible_tops_accessories, item_ids,
-                                                                        item_categories,
-                                                                        embeddings)
+                                                                   item_categories,
+                                                                   embeddings)
             compatible_tops_bottoms = add_not_compatible_items(compatible_tops_bottoms, item_ids, item_categories,
-                                                                    embeddings)
+                                                               embeddings)
             compatible_tops_shoes = add_not_compatible_items(compatible_tops_shoes, item_ids, item_categories,
-                                                                  embeddings)
+                                                             embeddings)
         else:
             compatible_tops_accessories = add_not_compatible_items(compatible_tops_accessories,
-                                                                        metric=self.not_compatible_items_metric)
+                                                                   metric=self.not_compatible_items_metric)
             compatible_tops_bottoms = add_not_compatible_items(compatible_tops_bottoms,
-                                                                    metric=self.not_compatible_items_metric)
+                                                               metric=self.not_compatible_items_metric)
             compatible_tops_shoes = add_not_compatible_items(compatible_tops_shoes,
-                                                                  metric=self.not_compatible_items_metric)
+                                                             metric=self.not_compatible_items_metric)
 
         # Create the json files containing the train, validation and test data for the learning of the GANs
         gan_train_set_ta, gan_validation_set_ta, gan_test_set_ta = train_validation_test_split(

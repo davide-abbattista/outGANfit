@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/OutfitGeneration_cGANsArchitecture.iml" filepath="$PROJECT_DIR$/.idea/OutfitGeneration_cGANsArchitecture.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../OutfitGeneration_cDCGANsArchitecture/.idea/OutfitGeneration_cDCGANsArchitecture.iml" filepath="$PROJECT_DIR$/../OutfitGeneration_cDCGANsArchitecture/.idea/OutfitGeneration_cDCGANsArchitecture.iml" />
     </modules>
   </component>
 </project>

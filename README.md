@@ -1,2 +1,2 @@
-# OutfitGeneration_cGANsArchitecture
-Conditional GANs architecture for outfit generation task
+# OutfitGenerationTask - a cDCGANs-based Architecture
+Conditional Deep Convolutional Generative Adversarial Networks based architecture for outfit generation task
