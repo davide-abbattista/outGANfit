@@ -55,12 +55,12 @@ def gaussian_filter(input: Tensor, win: Tensor) -> Tensor:
 
 
 def _ssim(
-    X: Tensor,
-    Y: Tensor,
-    data_range: float,
-    win: Tensor,
-    size_average: bool = True,
-    K: Union[Tuple[float, float], List[float]] = (0.01, 0.03)
+        X: Tensor,
+        Y: Tensor,
+        data_range: float,
+        win: Tensor,
+        size_average: bool = True,
+        K: Union[Tuple[float, float], List[float]] = (0.01, 0.03)
 ) -> Tuple[Tensor, Tensor]:
     r""" Calculate ssim index for X and Y
 
@@ -103,15 +103,15 @@ def _ssim(
 
 
 def ssim(
-    X: Tensor,
-    Y: Tensor,
-    data_range: float = 255,
-    size_average: bool = True,
-    win_size: int = 11,
-    win_sigma: float = 1.5,
-    win: Optional[Tensor] = None,
-    K: Union[Tuple[float, float], List[float]] = (0.01, 0.03),
-    nonnegative_ssim: bool = False,
+        X: Tensor,
+        Y: Tensor,
+        data_range: float = 255,
+        size_average: bool = True,
+        win_size: int = 11,
+        win_sigma: float = 1.5,
+        win: Optional[Tensor] = None,
+        K: Union[Tuple[float, float], List[float]] = (0.01, 0.03),
+        nonnegative_ssim: bool = False,
 ) -> Tensor:
     r""" interface of ssim
     Args:
@@ -121,8 +121,10 @@ def ssim(
         size_average (bool, optional): if size_average=True, ssim of all images will be averaged as a scalar
         win_size: (int, optional): the size of gauss kernel
         win_sigma: (float, optional): sigma of normal distribution
-        win (torch.Tensor, optional): 1-D gauss kernel. if None, a new kernel will be created according to win_size and win_sigma
-        K (list or tuple, optional): scalar constants (K1, K2). Try a larger K2 constant (e.g. 0.4) if you get a negative or NaN results.
+        win (torch.Tensor, optional): 1-D gauss kernel. if None, a new kernel will be created according to win_size and
+        win_sigma
+        K (list or tuple, optional): scalar constants (K1, K2). Try a larger K2 constant (e.g. 0.4) if you get a
+        negative or NaN results.
         nonnegative_ssim (bool, optional): force the ssim response to be nonnegative with relu
 
     Returns:
@@ -138,7 +140,7 @@ def ssim(
     if len(X.shape) not in (4, 5):
         raise ValueError(f"Input images should be 4-d or 5-d tensors, but got {X.shape}")
 
-    #if not X.type() == Y.type():
+    # if not X.type() == Y.type():
     #    raise ValueError(f"Input images should have the same dtype, but got {X.type()} and {Y.type()}.")
 
     if win is not None:  # set win_size
@@ -162,15 +164,15 @@ def ssim(
 
 
 def ms_ssim(
-    X: Tensor,
-    Y: Tensor,
-    data_range: float = 255,
-    size_average: bool = True,
-    win_size: int = 11,
-    win_sigma: float = 1.5,
-    win: Optional[Tensor] = None,
-    weights: Optional[List[float]] = None,
-    K: Union[Tuple[float, float], List[float]] = (0.01, 0.03)
+        X: Tensor,
+        Y: Tensor,
+        data_range: float = 255,
+        size_average: bool = True,
+        win_size: int = 11,
+        win_sigma: float = 1.5,
+        win: Optional[Tensor] = None,
+        weights: Optional[List[float]] = None,
+        K: Union[Tuple[float, float], List[float]] = (0.01, 0.03)
 ) -> Tensor:
     r""" interface of ms-ssim
     Args:
@@ -180,9 +182,11 @@ def ms_ssim(
         size_average (bool, optional): if size_average=True, ssim of all images will be averaged as a scalar
         win_size: (int, optional): the size of gauss kernel
         win_sigma: (float, optional): sigma of normal distribution
-        win (torch.Tensor, optional): 1-D gauss kernel. if None, a new kernel will be created according to win_size and win_sigma
+        win (torch.Tensor, optional): 1-D gauss kernel. if None, a new kernel will be created according to win_size and
+        win_sigma
         weights (list, optional): weights for different levels
-        K (list or tuple, optional): scalar constants (K1, K2). Try a larger K2 constant (e.g. 0.4) if you get a negative or NaN results.
+        K (list or tuple, optional): scalar constants (K1, K2). Try a larger K2 constant (e.g. 0.4) if you get a
+        negative or NaN results.
     Returns:
         torch.Tensor: ms-ssim results
     """
@@ -193,7 +197,7 @@ def ms_ssim(
         X = X.squeeze(dim=d)
         Y = Y.squeeze(dim=d)
 
-    #if not X.type() == Y.type():
+    # if not X.type() == Y.type():
     #    raise ValueError(f"Input images should have the same dtype, but got {X.type()} and {Y.type()}.")
 
     if len(X.shape) == 4:
@@ -211,7 +215,7 @@ def ms_ssim(
 
     smaller_side = min(X.shape[-2:])
     assert smaller_side > (win_size - 1) * (
-        2 ** 4
+            2 ** 4
     ), "Image size should be larger than %d due to the 4 downsamplings in ms-ssim" % ((win_size - 1) * (2 ** 4))
 
     if weights is None:
@@ -245,15 +249,15 @@ def ms_ssim(
 
 class SSIM(torch.nn.Module):
     def __init__(
-        self,
-        data_range: float = 255,
-        size_average: bool = True,
-        win_size: int = 11,
-        win_sigma: float = 1.5,
-        channel: int = 3,
-        spatial_dims: int = 2,
-        K: Union[Tuple[float, float], List[float]] = (0.01, 0.03),
-        nonnegative_ssim: bool = False,
+            self,
+            data_range: float = 255,
+            size_average: bool = True,
+            win_size: int = 11,
+            win_sigma: float = 1.5,
+            channel: int = 3,
+            spatial_dims: int = 2,
+            K: Union[Tuple[float, float], List[float]] = (0.01, 0.03),
+            nonnegative_ssim: bool = False,
     ) -> None:
         r""" class for ssim
         Args:
@@ -262,7 +266,8 @@ class SSIM(torch.nn.Module):
             win_size: (int, optional): the size of gauss kernel
             win_sigma: (float, optional): sigma of normal distribution
             channel (int, optional): input channels (default: 3)
-            K (list or tuple, optional): scalar constants (K1, K2). Try a larger K2 constant (e.g. 0.4) if you get a negative or NaN results.
+            K (list or tuple, optional): scalar constants (K1, K2). Try a larger K2 constant (e.g. 0.4) if you get a
+            negative or NaN results.
             nonnegative_ssim (bool, optional): force the ssim response to be nonnegative with relu.
         """
 
@@ -288,15 +293,15 @@ class SSIM(torch.nn.Module):
 
 class MS_SSIM(torch.nn.Module):
     def __init__(
-        self,
-        data_range: float = 255,
-        size_average: bool = True,
-        win_size: int = 11,
-        win_sigma: float = 1.5,
-        channel: int = 3,
-        spatial_dims: int = 2,
-        weights: Optional[List[float]] = None,
-        K: Union[Tuple[float, float], List[float]] = (0.01, 0.03),
+            self,
+            data_range: float = 255,
+            size_average: bool = True,
+            win_size: int = 11,
+            win_sigma: float = 1.5,
+            channel: int = 3,
+            spatial_dims: int = 2,
+            weights: Optional[List[float]] = None,
+            K: Union[Tuple[float, float], List[float]] = (0.01, 0.03),
     ) -> None:
         r""" class for ms-ssim
         Args:
@@ -306,7 +311,8 @@ class MS_SSIM(torch.nn.Module):
             win_sigma: (float, optional): sigma of normal distribution
             channel (int, optional): input channels (default: 3)
             weights (list, optional): weights for different levels
-            K (list or tuple, optional): scalar constants (K1, K2). Try a larger K2 constant (e.g. 0.4) if you get a negative or NaN results.
+            K (list or tuple, optional): scalar constants (K1, K2). Try a larger K2 constant (e.g. 0.4) if you get a
+            negative or NaN results.
         """
 
         super(MS_SSIM, self).__init__()

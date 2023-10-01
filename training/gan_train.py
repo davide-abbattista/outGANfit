@@ -1,15 +1,12 @@
 import csv
 from copy import deepcopy
-
 import numpy as np
 import torch
 from matplotlib import pyplot as plt
 from torchvision import transforms
 
-from architecture.gan_with_embeddings import Discriminator as Discriminator_AE
-from architecture.gan_with_embeddings import Generator as Generator_AE
-from architecture.gan_without_embeddings import Discriminator as Discriminator_no_AE
-from architecture.gan_without_embeddings import Generator as Generator_no_AE
+from architecture.gan import Discriminator
+from architecture.gan import Generator
 from architecture.ae import AutoEncoder
 from utility.utils import read_json, gan_weights_init
 from utility.custom_image_dataset import CustomImageDatasetGAN
@@ -54,10 +51,6 @@ class GenerativeAdversarialNetworkTrainer:
         transform = transforms.Compose([transforms.Resize(128),
                                         transforms.ToTensor(),
                                         transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
-                                        # # map values in the range [-1, 1]
-                                        # transforms.Normalize([127.5, 127.5, 127.5], [127.5, 127.5, 127.5])
-                                        # # map values in the range [0, 1]
-                                        # transforms.Normalize([0, 0, 0], [255, 255, 255])
                                         ])
 
         trainset = CustomImageDatasetGAN(img_dir=images_dir, data=train_set, transform=transform)
@@ -72,17 +65,17 @@ class GenerativeAdversarialNetworkTrainer:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         if self.autoencoder:
-            self.generator = Generator_AE().to(self.device)
-            self.real_fake_discriminator = Discriminator_AE(depth_in=3).to(self.device)
-            self.compatibility_discriminator = Discriminator_AE(depth_in=6).to(self.device)
+            self.generator = Generator(autoencoder=True).to(self.device)
+
             self.ae = AutoEncoder().to(self.device)
             checkpoint = torch.load(autoencoder_checkpoint_path, map_location=torch.device('cpu'))
             self.ae.load_state_dict(checkpoint)
             self.ae.eval()
         else:
-            self.generator = Generator_no_AE().to(self.device)
-            self.real_fake_discriminator = Discriminator_no_AE(depth_in=3).to(self.device)
-            self.compatibility_discriminator = Discriminator_no_AE(depth_in=6).to(self.device)
+            self.generator = Generator(autoencoder=False).to(self.device)
+
+        self.real_fake_discriminator = Discriminator(depth_in=3).to(self.device)
+        self.compatibility_discriminator = Discriminator(depth_in=6).to(self.device)
 
         self.generator.apply(gan_weights_init)
         self.real_fake_discriminator.apply(gan_weights_init)
@@ -97,7 +90,7 @@ class GenerativeAdversarialNetworkTrainer:
         self.fid = FID()
 
     def train_and_test(self, num_epochs=300):
-        self.best_fid_score = float('inf')  # Initialize with a high value
+        self.best_fid_score = float('inf')
         self.best_epoch = 0
         self.best_generator = deepcopy(self.generator)
 
@@ -263,16 +256,13 @@ class GenerativeAdversarialNetworkTrainer:
         # calculate the batch loss with respect to the real-fake discriminator
         validity = self.real_fake_discriminator(fake_images)
         g1_loss = self.criterion(validity, torch.ones(batch_size, 1).to(self.device))
-        # g1_loss.backward(retain_graph=True)
 
         # calculate the batch loss with respect to the compatibility discriminator
         compatibility = self.compatibility_discriminator(fake_images, cond_images)
         g2_loss = self.criterion(compatibility, torch.ones(batch_size, 1).to(self.device))
-        # g2_loss.backward()
 
-        # g_loss = (g1_loss + g2_loss) * 0.5
-        g_loss = g1_loss + g2_loss
         # backward pass: compute gradient of the loss with respect to model parameters
+        g_loss = g1_loss + g2_loss
         g_loss.backward()
 
         # perform a single optimization step (parameter update)
@@ -287,7 +277,6 @@ class GenerativeAdversarialNetworkTrainer:
         # calculate the batch loss with compatible items
         real_validity = self.compatibility_discriminator(real_images, cond_images)
         compatibility_loss = self.criterion(real_validity, torch.ones(batch_size, 1).to(self.device))
-        # compatibility_loss.backward()
 
         # calculate the batch loss with fake images
         if self.autoencoder:
@@ -296,15 +285,13 @@ class GenerativeAdversarialNetworkTrainer:
             fake_images = self.generator(cond_images)
         fake_validity = self.compatibility_discriminator(fake_images, cond_images)
         fake_compatibility_loss = self.criterion(fake_validity, torch.zeros(batch_size, 1).to(self.device))
-        # fake_compatibility_loss.backward()
 
         # calculate the batch loss with not compatible items
         fake_validity = self.compatibility_discriminator(not_compatible_images, cond_images)
         not_compatibility_loss = self.criterion(fake_validity, torch.zeros(batch_size, 1).to(self.device))
-        # not_compatibility_loss.backward()
 
-        d_loss = compatibility_loss + fake_compatibility_loss + not_compatibility_loss
         # backward pass: compute gradient of the loss with respect to model parameters
+        d_loss = compatibility_loss + fake_compatibility_loss + not_compatibility_loss
         d_loss.backward()
 
         # perform a single optimization step (parameter update)
@@ -318,7 +305,6 @@ class GenerativeAdversarialNetworkTrainer:
         # calculate the batch loss with real images
         real_validity = self.real_fake_discriminator(real_images)
         real_loss = self.criterion(real_validity, torch.ones(batch_size, 1).to(self.device))
-        # real_loss.backward()
 
         # calculate the batch loss with fake images
         if self.autoencoder:
@@ -327,10 +313,9 @@ class GenerativeAdversarialNetworkTrainer:
             fake_images = self.generator(cond_images)
         fake_validity = self.real_fake_discriminator(fake_images)
         fake_loss = self.criterion(fake_validity, torch.zeros(batch_size, 1).to(self.device))
-        # fake_loss.backward()
 
-        d_loss = real_loss + fake_loss
         # backward pass: compute gradient of the loss with respect to model parameters
+        d_loss = real_loss + fake_loss
         d_loss.backward()
 
         # perform a single optimization step (parameter update)
@@ -338,7 +323,6 @@ class GenerativeAdversarialNetworkTrainer:
         return d_loss.data.item()
 
     def visually_evaluation(self, category):
-        # images = next(iter(self.validationloader))
         for images, _ in self.validationloader:
             cond_images = images[0].to(self.device)
             real_images = images[1].to(self.device)
@@ -374,11 +358,9 @@ class GenerativeAdversarialNetworkTrainer:
         else:
             csv_name = f'{self.category}_gan_validation_FIDs'
             fids = self.validation_fids
-        with open(f'../checkpoints/{csv_name}', mode='w', newline='') as file_csv:
+        with open(f'../checkpoints/{csv_name}.csv', mode='w', newline='') as file_csv:
             fieldnames = ['Epoch', 'FID']
             writer = csv.DictWriter(file_csv, fieldnames=fieldnames)
-
             writer.writeheader()
-
             for epoch, fid in enumerate(fids, start=1):
                 writer.writerow({'Epoch': epoch, 'FID': fid})

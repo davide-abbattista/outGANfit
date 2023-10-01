@@ -13,7 +13,6 @@ def generate_embeddings(items):
     ae_test_set = read_json('../preprocessing/json/filtered/ae_test_set.json')
 
     transform = transforms.Compose([
-        # transforms.Normalize([0, 0, 0], [255, 255, 255]),
         transforms.Resize(128),
         transforms.ToTensor()
     ])
@@ -48,25 +47,30 @@ def generate_embeddings(items):
 
 
 def get_embedding(item, item_ids, item_categories, embeddings):
+    # return the embedding corresponding to the given item ID
     index = item_ids.index(item)
     return embeddings[index], item_categories[index]
 
 
 def get_most_similar_item(item, item_ids, item_categories, embeddings):
+    # return the ID of the most similar item based on 2-norm distance
     item_embedding, item_category = get_embedding(item, item_ids, item_categories, embeddings)
     distances = torch.cdist(torch.Tensor(item_embedding).unsqueeze(0).unsqueeze(0), torch.Tensor(embeddings))
-    ordered_embedding_indexes = torch.argsort(distances).squeeze(0)  # why squeeze(0)
-    for index in ordered_embedding_indexes[0]:  # why [0]
+    ordered_embedding_indexes = torch.argsort(distances).squeeze(0)
+
+    for index in ordered_embedding_indexes[0]:
         if item != item_ids[index]:
             if item_category == item_categories[index]:
                 return item_ids[index]
 
 
 def get_most_different_item(item, items_ids, item_categories, embeddings):
+    # return the ID of the most different item based on 2-norm distance
     item_embedding, item_category = get_embedding(item, items_ids, item_categories, embeddings)
     distances = torch.cdist(torch.Tensor(item_embedding).unsqueeze(0).unsqueeze(0), torch.Tensor(embeddings))
-    ordered_embedding_indexes = torch.argsort(distances, descending=True).squeeze(0)  # why squeeze(0)
-    for index in ordered_embedding_indexes[0]:  # why [0]
+    ordered_embedding_indexes = torch.argsort(distances, descending=True).squeeze(0)
+
+    for index in ordered_embedding_indexes[0]:
         if item_category == item_categories[index]:
             return items_ids[index]
 
@@ -74,6 +78,8 @@ def get_most_different_item(item, items_ids, item_categories, embeddings):
 def get_embeddings():
     item_ids = read_json('../preprocessing/json/embeddings/item_ids.json')
     item_categories = read_json('../preprocessing/json/embeddings/item_categories.json')
+
     with open('../preprocessing/json/embeddings/embeddings.npy', 'rb') as embeddings_file:
         embeddings = np.load(embeddings_file)
+
     return item_ids, item_categories, embeddings

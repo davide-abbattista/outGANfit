@@ -5,7 +5,7 @@ import torch
 import matplotlib.pyplot as plt
 
 from utility.custom_image_dataset import CustomImageDatasetAE
-from architecture.ae import SSIM_Loss
+from utility.utils import SSIM_Loss
 from architecture.ae import AutoEncoder
 from utility.utils import read_json, ae_weights_init
 
@@ -35,7 +35,6 @@ class AutoencoderTrainer:
         test_set = read_json(test_set_path)
 
         train_transform = transforms.Compose([
-            # transforms.Normalize([0, 0, 0], [255, 255, 255]),  # map values in the range [0, 1]
             transforms.RandomCrop(size=128, pad_if_needed=True),
             transforms.RandomHorizontalFlip(),
             transforms.RandomVerticalFlip(),
@@ -43,7 +42,6 @@ class AutoencoderTrainer:
         ])
 
         val_test_transform = transforms.Compose([
-            # transforms.Normalize([0, 0, 0], [255, 255, 255]),  # map values in the range [0, 1]
             transforms.Resize(128),
             transforms.ToTensor()
         ])
@@ -62,12 +60,10 @@ class AutoencoderTrainer:
         self.ae = AutoEncoder().to(self.device)
         self.ae.apply(ae_weights_init)
         self.criterion = SSIM_Loss()
-        self.optimizer = Adam(self.ae.parameters(), lr=1e-3)
-        # self.optimizer = Adam(self.ae.parameters(), lr=1e-4, weight_decay=1e-5)
-        # self.optimizer = Adam(ae.parameters(), lr=1e-4, weight_decay=1e-5, eps=1e-4)
+        self.optimizer = Adam(self.ae.parameters(), lr=1e-4)
 
     def train_and_test(self, n_epochs=30):
-        self.valid_loss_min = float('inf')  # track change in validation loss
+        self.valid_loss_min = float('inf')
         self.best_epoch = 0
         self.best_model = deepcopy(self.ae)
 
@@ -125,7 +121,7 @@ class AutoencoderTrainer:
                 valid_loss = valid_loss / len(self.validationloader.dataset)
                 self.validation_losses.append(valid_loss)
 
-                # print training/validation statistics
+                # print training/validation losses
                 print('Training Loss: {:.6f} \tValidation Loss: {:.6f}'.format(train_loss, valid_loss))
 
                 # save model if validation loss has decreased

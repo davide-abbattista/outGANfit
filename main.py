@@ -1,11 +1,15 @@
 from preprocessing.preprocessing import Preprocesser
 from training.gan_train import GenerativeAdversarialNetworkTrainer
 
+# set the parameters that control the preprocessing phase
+macrocategories = False
 autoencoder = False
+not_compatible_items_metric = 'FID'
 
-preprocessing = Preprocesser(macrocategories=False, autoencoder=autoencoder, not_compatible_items_metric='FID')
+preprocessing = Preprocesser(macrocategories, autoencoder, not_compatible_items_metric)
 preprocessing.preprocess()
 
+# train the cDCGANs
 accessories_gan_trainer = GenerativeAdversarialNetworkTrainer(train_set_path=
                                                               '../preprocessing/json/filtered/gan_train_set_ta.json',
                                                               validation_set_path=

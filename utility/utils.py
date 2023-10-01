@@ -1,10 +1,13 @@
 import json
 from torch import nn
 
+from utility.pytorch_msssim import SSIM
 
-# custom weights initialization
+
 def gan_weights_init(m):
+    # custom weights initialization for the GAN
     classname = m.__class__.__name__
+
     if classname.find('Conv') != -1:
         nn.init.normal_(m.weight.data, 0.0, 0.02)
     elif classname.find('BatchNorm') != -1:
@@ -13,7 +16,9 @@ def gan_weights_init(m):
 
 
 def ae_weights_init(m):
+    # custom weights initialization for the Autoencoder
     classname = m.__class__.__name__
+
     if classname.find('Conv') != -1:
         nn.init.xavier_uniform_(m.weight.data)
         if m.bias is not None:
@@ -38,3 +43,9 @@ def write(path, json):
 def write_json(path, json_file):
     with open(path, 'w') as file:
         json.dump(json_file, file, indent=4)
+
+
+class SSIM_Loss(SSIM):
+    # loss evaluation based of SSIM score
+    def forward(self, img1, img2):
+        return 100 * (1 - super(SSIM_Loss, self).forward(img1, img2))

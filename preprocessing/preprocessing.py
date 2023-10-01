@@ -2,7 +2,6 @@ import random
 import numpy as np
 from PIL import Image
 from torchvision.transforms import transforms
-
 import json
 import csv
 
@@ -17,6 +16,7 @@ def filter_csv(macrocategories, input_filename):
     with open(input_filename, 'r', newline='') as file:
         csv_reader = csv.reader(file)
         if macrocategories:
+            # select the category IDs related to the specified macro-categories
             for row in csv_reader:
                 category = row[2]
                 if (category == 'bottoms') or (category == 'tops') or (category == 'accessories') or (
@@ -24,6 +24,7 @@ def filter_csv(macrocategories, input_filename):
                     if row[0] not in allowed_category_ids.keys():
                         allowed_category_ids[row[0]] = category
         else:
+            # select the category IDs related to the specified sub-categories
             for row in csv_reader:
                 category = row[2]
                 if (
@@ -67,7 +68,7 @@ def eliminate_multiple_outfit_instances(dataset):
     return dataset
 
 
-def compatibility_couples_generator(dataset, filtered_items, outfit_titles=None):
+def compatible_couples_generator(dataset, filtered_items):
     item_ids = list(filtered_items.keys())
 
     compatible_tops_accessories = []
@@ -78,7 +79,8 @@ def compatibility_couples_generator(dataset, filtered_items, outfit_titles=None)
         items = [item for item in outfit['items'] if item['item_id'] in item_ids]
         categories = [filtered_items[item["item_id"]] for item in items]
 
-        # consider the outfit only if contains a top and at least another item belonging to the other three categories
+        # consider the outfit only if it contains a top and at least another item belonging to one of the other three
+        # categories ('bottoms', 'shoes', 'accessories')
         if len(set(categories)) >= 2 and 'tops' in categories:
             outfit['items'] = items
             for item in outfit['items']:
@@ -86,22 +88,17 @@ def compatibility_couples_generator(dataset, filtered_items, outfit_titles=None)
 
             outfit['items'] = [item | {"category": filtered_items[item["item_id"]]} for item in
                                outfit['items']]
-            # outfit['outfit_description'] = outfit_titles[outfit["set_id"]]["url_name"]
             del outfit["set_id"]
 
-            # outfit_description = outfit['outfit_description']
+            # create multiple compatible couple instances if the outfit contains more than one item beyond the top one
             top = [item for item in outfit['items'] if item['category'] == 'tops'][0]
             for item in outfit['items']:
                 if item['category'] == 'accessories':
-                    # compatible_tops_accessories.append(
-                    #     {'items': [top | item], 'outfit_description': outfit_description})
                     compatible_tops_accessories.append(
                         {'items': [top, item]})
                 if item['category'] == 'bottoms':
-                    # compatible_tops_bottoms.append({'items': [top | item], 'outfit_description': outfit_description})
                     compatible_tops_bottoms.append({'items': [top, item]})
                 if item['category'] == 'shoes':
-                    # compatible_tops_shoes.append({'items': [top | item], 'outfit_description': outfit_description})
                     compatible_tops_shoes.append({'items': [top, item]})
 
     return compatible_tops_accessories, compatible_tops_bottoms, compatible_tops_shoes
@@ -116,6 +113,7 @@ def train_validation_test_split(dataset, test_ratio, shuffle=False, seed=None):
     val_ratio = test_ratio / (1 - test_ratio)
     test_idx = round(len(dataset) * (1 - test_ratio))
     val_idx = round(test_idx * (1 - val_ratio))
+
     return dataset[: val_idx], dataset[val_idx: test_idx], dataset[test_idx:]
 
 
@@ -126,12 +124,14 @@ def add_not_compatible_items(dataset_json, metric=None, item_ids=None, item_cate
         outfit['not_compatible'] = []
         items = outfit['items']
         if metric is None:
+            # select the not compatible items based on embeddings distances
             for item in items:
                 category = item['category']
                 if category != 'tops':
                     different_item = get_most_different_item(item['item_id'], item_ids, item_categories, embeddings)
                     outfit['not_compatible'].append({'item_id': different_item, 'category': category})
         elif metric == 'random':
+            # select the not compatible items randomly
             for item in items:
                 category = item['category']
                 if category != 'tops':
@@ -143,6 +143,7 @@ def add_not_compatible_items(dataset_json, metric=None, item_ids=None, item_cate
                          item['category'] == category][0]
                     outfit['not_compatible'].append(different_item)
         elif metric == 'FID':
+            # select the not compatible items based on FID score
             for item in items:
                 category = item['category']
                 if category != 'tops':
@@ -169,14 +170,14 @@ def add_not_compatible_items(dataset_json, metric=None, item_ids=None, item_cate
 
 
 class Preprocesser:
-    def __init__(self, macrocategories=True, autoencoder=True, ae_trained=False, not_compatible_items_metric=None):
+    def __init__(self, macrocategories=True, autoencoder=True, not_compatible_items_metric=None, ae_trained=False):
         self.autoencoder = autoencoder
         self.macrocategories = macrocategories
         self.not_compatible_items_metric = not_compatible_items_metric
         self.ae_trainded = ae_trained
 
     def preprocess(self):
-        # Obtain a list containing the wanted category ids
+        # Obtain a list containing the wanted category IDs
         allowed_category_ids = filter_csv(self.macrocategories, './csv/categories.csv')
 
         # Create a json file with all the items that belongs to the specified wanted categories
@@ -186,7 +187,7 @@ class Preprocesser:
         filtered_items_json = read_json('./json/filtered/filtered_polyvore_item_metadata.json')
 
         if self.autoencoder:
-            # Create the json files containing the train, validation and test data for the learning of the autoencoder
+            # Create the json files containing the train, validation and test data for the training of the autoencoder
             # used to obtain the images embeddings
             ae_train_set, ae_validation_set, ae_test_set = train_validation_test_split(
                 [{key: value} for key, value in filtered_items_json.items()], test_ratio=0.2)
@@ -211,15 +212,13 @@ class Preprocesser:
         d3 = read_json('./json/valid.json')
         dataset_json = eliminate_multiple_outfit_instances(d1 + d2 + d3)
 
-        # Create the compatibility couples (top-accessory, top-bottom, top-shoes) for the learning of the three
+        # Create the compatibility couples (top-accessory, top-bottom, top-shoes) for the training of the three
         # GANs of the architecture
-        # outfit_titles = read_json('./json/polyvore_outfit_titles.json')
         compatible_tops_accessories, compatible_tops_bottoms, compatible_tops_shoes = \
-            compatibility_couples_generator(dataset_json, filtered_items_json)
+            compatible_couples_generator(dataset_json, filtered_items_json)
 
         # Put into each sample an accessory, a bottom or a pair of shoes that is not compatible with the top
         # (used to train the compatibility discriminator)
-
         if self.autoencoder:
             item_ids, item_categories, embeddings = get_embeddings()
             compatible_tops_accessories = add_not_compatible_items(compatible_tops_accessories, item_ids,
@@ -237,7 +236,7 @@ class Preprocesser:
             compatible_tops_shoes = add_not_compatible_items(compatible_tops_shoes,
                                                              metric=self.not_compatible_items_metric)
 
-        # Create the json files containing the train, validation and test data for the learning of the GANs
+        # Create the json files containing the train, validation and test data for the training of the GANs
         gan_train_set_ta, gan_validation_set_ta, gan_test_set_ta = train_validation_test_split(
             compatible_tops_accessories, test_ratio=0.2)
         gan_train_set_tb, gan_validation_set_tb, gan_test_set_tb = train_validation_test_split(
@@ -253,11 +252,3 @@ class Preprocesser:
         write_json('./json/filtered/gan_train_set_ts.json', gan_train_set_ts)
         write_json('./json/filtered/gan_validation_set_ts.json', gan_validation_set_ts)
         write_json('./json/filtered/gan_test_set_ts.json', gan_test_set_ts)
-
-        # Remove from the images folder all the items that don't belong to the specified categories
-        # items = [el + '.jpg' for el in list(filtered_items_json.keys())]
-        # remove_images(folder_path='../images', images_to_keep=items)
-
-
-preprocessing = Preprocesser(macrocategories=False, autoencoder=False, not_compatible_items_metric='FID')
-preprocessing.preprocess()
