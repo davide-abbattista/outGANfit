@@ -8,10 +8,9 @@ import torch
 
 
 class FID:
-    def __init__(self, range=None, device=torch.device("cuda" if torch.cuda.is_available() else "cpu")):
+    def __init__(self, device=torch.device("cuda" if torch.cuda.is_available() else "cpu")):
         self.inception_model = None
         self.device = device
-        self.range = range
         self.load_model()
 
     def load_model(self):

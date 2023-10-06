@@ -83,7 +83,7 @@ class Discriminator(nn.Module):
         self.e1 = Encoder(self.depth_in, 16, batchnorm=False)  # 16x64x64 (input image: 3x128x128 or 6x128x128)
         self.e2 = Encoder(16, 32)  # 32x32x32
         self.e3 = Encoder(32, 64)  # 64x16x16
-        self.e4 = Encoder(64, 128)  # 128x32x32
+        self.e4 = Encoder(64, 128)  # 128x8x8
         self.e5 = Encoder(128, 256)  # 256x4x4
         self.e6 = Encoder(256, 512)  # 512x2x2
 

@@ -130,7 +130,7 @@ class AutoencoderTrainer:
                     print('\nValidation loss decreased ({:.6f} --> {:.6f}).  Saving model ...'.format(
                         self.valid_loss_min,
                         valid_loss))
-                    torch.save(self.ae.state_dict(), 'trained_ae_128.pth')
+                    torch.save(self.ae.state_dict(), 'trained_ae_512.pth')
                     self.valid_loss_min = valid_loss
                     self.best_model = deepcopy(self.ae)
 

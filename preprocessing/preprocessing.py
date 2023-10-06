@@ -119,7 +119,7 @@ def train_validation_test_split(dataset, test_ratio, shuffle=False, seed=None):
 
 def add_not_compatible_items(dataset_json, metric=None, item_ids=None, item_categories=None, embeddings=None):
     if metric == 'FID':
-        fid = FID(range=255)
+        fid = FID()
     for outfit in dataset_json:
         outfit['not_compatible'] = []
         items = outfit['items']
