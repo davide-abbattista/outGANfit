@@ -25,6 +25,14 @@ The goal is to input a T-shirt to the model and have it generate a matching pant
 Our architecture includes three different GANs, one for each garment to be predicted (pants, shoes, accessories). For each gan we have a generator and two discriminators, one of which is used to evaluate the compatibility between the conditioning image (t-shirt) and the generated garment. The other discriminator is useful, on the other hand, to classify what is generated as real or fake.
 ![Architecture](https://i.ibb.co/C5KP874/Screenshot-2024-01-10-alle-15-25-35.png)
 
+## Results
+
+After the evaluation, we saved our best model in a .pth file, named “trained_generator_bottom.pth”. This was made in order to save the updated weights of our model.
+We loaded the model and the “testloader”, i.e. iterator of test images, and we tested it.
+We obtained a FID value of 175.4166, in accordance with our expectations.
+Below, some outputs:
+![Results](https://i.ibb.co/nfD6t2s/Screenshot-2024-01-10-alle-15-37-09.png)
+
 ## Documentation
 
 You can read the complete documentation at [this link](https://drive.google.com/file/d/1PjbH4C5pEDCSzFhB6YGW-dFH3mL-3fwI/view?usp=sharing)
