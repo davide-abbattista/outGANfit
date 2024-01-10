@@ -18,7 +18,7 @@ Our dataset, Polyvore Outfits (downloadable at [this link](https://drive.google.
 images of garments measuring 300x300 pixels, divided into the categories “tops”,
 “bottoms”, “shoes”, “accessories”, “all-body”, “jewellery”, “bags”, “hats” and
 “outerwear”. From these, only the first four were chosen.
-The goal is to input a T-shirt to the model and have it generate a matching pant, pair of shoes and accessory.
+The goal is to input a t-shirt to the model and have it generate a matching pant, pair of shoes and accessory (only sunglasses in our case).
 
 ## outGANfit architecture
 
