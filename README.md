@@ -40,7 +40,6 @@ You can read the complete documentation at [this link](https://drive.google.com/
 
 ## Authors
 
-- [Giovanni Silvestri](https://www.github.com/vannisil)
 - [Davide Abbattista](https://www.github.com/davide-abbattista)
-
+- [Giovanni Silvestri](https://www.github.com/vannisil)
 
