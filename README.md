@@ -23,7 +23,7 @@ The goal is to input a T-shirt to the model and have it generate a matching pant
 ## outGANfit architecture
 
 Our architecture includes three different GANs, one for each garment to be predicted (pants, shoes, accessories). For each gan we have a generator and two discriminators, one of which is used to evaluate the compatibility between the conditioning image (t-shirt) and the generated garment. The other discriminator is useful, on the other hand, to classify what is generated as real or fake.
-![Architecture](https://ibb.co/hRFY9Wr)
+![Architecture](https://i.ibb.co/C5KP874/Screenshot-2024-01-10-alle-15-25-35.png)
 
 ## Documentation
 
